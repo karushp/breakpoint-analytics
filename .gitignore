@@ -9,6 +9,10 @@ venv/
 ENV/
 .venv
 
+# uv
+.uv/
+uv.lock
+
 # Data files (large CSVs)
 data/raw/*.csv
 data/processed/*.csv
