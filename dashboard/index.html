@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breakpoint Analytics</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎾 Breakpoint Analytics</h1>
+            <p class="subtitle">Player Comparison & Match Prediction</p>
+            <p class="last-updated">Data last updated: <span id="last-updated">Loading...</span></p>
+        </header>
+
+        <main>
+            <!-- Player Selector Section -->
+            <section class="player-selector">
+                <div class="selector-group">
+                    <label for="player-a">Player A</label>
+                    <select id="player-a" class="player-select">
+                        <option value="">Select Player A...</option>
+                    </select>
+                </div>
+                <div class="vs-divider">VS</div>
+                <div class="selector-group">
+                    <label for="player-b">Player B</label>
+                    <select id="player-b" class="player-select">
+                        <option value="">Select Player B...</option>
+                    </select>
+                </div>
+                <button id="compare-btn" class="compare-btn" disabled>Compare</button>
+            </section>
+
+            <!-- Results Section -->
+            <div id="results-section" class="results-section hidden">
+                <!-- Win Probability -->
+                <section class="win-probability">
+                    <h2>🏆 Predicted Edge</h2>
+                    <div class="prob-display">
+                        <div class="prob-player" id="prob-player-a">
+                            <div class="prob-name" id="name-player-a"></div>
+                            <div class="prob-value" id="prob-value-a">--%</div>
+                        </div>
+                        <div class="prob-player" id="prob-player-b">
+                            <div class="prob-name" id="name-player-b"></div>
+                            <div class="prob-value" id="prob-value-b">--%</div>
+                        </div>
+                    </div>
+                    <div class="confidence-badge" id="confidence-badge">Confidence: --</div>
+                </section>
+
+                <!-- Head-to-Head -->
+                <section class="h2h-section">
+                    <h2>Head-to-Head</h2>
+                    <div class="h2h-stats">
+                        <div class="stat-box">
+                            <div class="stat-label">Total Matches</div>
+                            <div class="stat-value" id="h2h-total">--</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label" id="h2h-label-a">Player A Wins</div>
+                            <div class="stat-value" id="h2h-wins-a">--</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label" id="h2h-label-b">Player B Wins</div>
+                            <div class="stat-value" id="h2h-wins-b">--</div>
+                        </div>
+                    </div>
+                    <div id="h2h-last-5" class="h2h-last-5"></div>
+                </section>
+
+                <!-- Form Comparison -->
+                <section class="form-section">
+                    <h2>Recent Form</h2>
+                    <div class="form-comparison">
+                        <div class="form-player">
+                            <div class="form-name" id="form-name-a"></div>
+                            <div class="form-stat">Last 10: <span id="form-win-pct-a">--%</span></div>
+                        </div>
+                        <div class="form-player">
+                            <div class="form-name" id="form-name-b"></div>
+                            <div class="form-stat">Last 10: <span id="form-win-pct-b">--%</span></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Surface Breakdown -->
+                <section class="surface-section">
+                    <h2>Surface Breakdown</h2>
+                    <table class="surface-table">
+                        <thead>
+                            <tr>
+                                <th>Surface</th>
+                                <th id="surface-name-a">Player A</th>
+                                <th id="surface-name-b">Player B</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Hard</td>
+                                <td id="surface-hard-a">--</td>
+                                <td id="surface-hard-b">--</td>
+                            </tr>
+                            <tr>
+                                <td>Clay</td>
+                                <td id="surface-clay-a">--</td>
+                                <td id="surface-clay-b">--</td>
+                            </tr>
+                            <tr>
+                                <td>Grass</td>
+                                <td id="surface-grass-a">--</td>
+                                <td id="surface-grass-b">--</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <!-- Rankings & Elo -->
+                <section class="rankings-section">
+                    <h2>Rankings & Elo</h2>
+                    <div class="rankings-display">
+                        <div class="ranking-box">
+                            <div class="ranking-label">Current Rank</div>
+                            <div class="ranking-value" id="rank-a">--</div>
+                        </div>
+                        <div class="ranking-box">
+                            <div class="ranking-label">Elo Rating</div>
+                            <div class="ranking-value" id="elo-a">--</div>
+                        </div>
+                        <div class="ranking-box">
+                            <div class="ranking-label">Current Rank</div>
+                            <div class="ranking-value" id="rank-b">--</div>
+                        </div>
+                        <div class="ranking-box">
+                            <div class="ranking-label">Elo Rating</div>
+                            <div class="ranking-value" id="elo-b">--</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="elo-chart"></canvas>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Loading data...</p>
+            </div>
+
+            <!-- Error Message -->
+            <div id="error" class="error hidden"></div>
+        </main>
+
+        <footer>
+            <p>Data source: <a href="https://github.com/JeffSackmann/tennis_atp" target="_blank">Jeff Sackmann Tennis Data</a></p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
