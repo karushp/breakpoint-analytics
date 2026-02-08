@@ -16,28 +16,27 @@ jobs:
       with:
         fetch-depth: 0
     
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
-        cache: 'pip'
     
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      run: uv sync
     
     - name: Run data ingestion
-      run: |
-        python pipelines/ingest_sackmann.py
+      run: uv run python pipelines/ingest_sackmann.py
     
     - name: Build features
-      run: |
-        python pipelines/build_features.py
+      run: uv run python pipelines/build_features.py
     
     - name: Export dashboard data
-      run: |
-        python pipelines/export_dashboard_data.py
+      run: uv run python pipelines/export_dashboard_data.py
     
     - name: Check for changes
       id: check-changes

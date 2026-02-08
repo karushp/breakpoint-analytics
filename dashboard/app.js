@@ -1,4 +1,4 @@
-// Tennis Analytics Dashboard - Frontend JavaScript
+// Breakpoint Analytics - Frontend JavaScript
 
 let playersData = null;
 let rankingsData = null;
@@ -31,9 +31,12 @@ async function loadInitialData() {
             rankingsData = await rankingsResponse.json();
         }
         
-        // Update last updated timestamp
-        document.getElementById('last-updated').textContent = 
-            new Date(playersData.last_updated).toLocaleString();
+        // Update last updated timestamp (if element exists)
+        const lastUpdatedEl = document.getElementById('last-updated');
+        if (lastUpdatedEl) {
+            lastUpdatedEl.textContent = 
+                new Date(playersData.last_updated).toLocaleString();
+        }
         
         // Populate player selectors
         populatePlayerSelectors();
@@ -45,47 +48,263 @@ async function loadInitialData() {
     }
 }
 
+// Store sorted players list
+let sortedPlayers = [];
+let allPlayers = []; // Store all players for lookup
+
 // Populate player selectors
 function populatePlayerSelectors() {
-    const selectA = document.getElementById('player-a');
-    const selectB = document.getElementById('player-b');
-    
     // Sort players alphabetically
-    const sortedPlayers = [...playersData.players].sort((a, b) => 
+    sortedPlayers = [...playersData.players].sort((a, b) => 
         a.name.localeCompare(b.name)
     );
+    allPlayers = [...sortedPlayers];
     
-    sortedPlayers.forEach(player => {
-        const optionA = document.createElement('option');
-        optionA.value = player.id;
-        optionA.textContent = player.name;
-        selectA.appendChild(optionA);
+    // Setup typeahead inputs
+    setupTypeahead('player-a-input', 'player-a', 'dropdown-a', 'clear-btn-a');
+    setupTypeahead('player-b-input', 'player-b', 'dropdown-b', 'clear-btn-b');
+}
+
+// Setup typeahead search component
+function setupTypeahead(inputId, hiddenInputId, dropdownId, clearBtnId) {
+    const input = document.getElementById(inputId);
+    const hiddenInput = document.getElementById(hiddenInputId);
+    const dropdown = document.getElementById(dropdownId);
+    const clearBtn = document.getElementById(clearBtnId);
+    
+    let selectedIndex = -1;
+    let filteredPlayers = [];
+    let selectedPlayer = null;
+    
+    // Get player initials for avatar
+    function getInitials(name) {
+        const parts = name.split(' ');
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        return name.substring(0, 2).toUpperCase();
+    }
+    
+    // Highlight matching text
+    function highlightMatch(text, query) {
+        if (!query) return text;
+        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return text.replace(regex, '<span class="highlight">$1</span>');
+    }
+    
+    // Filter players based on search query
+    function filterPlayers(query) {
+        if (!query || query.length < 1) {
+            return [];
+        }
         
-        const optionB = document.createElement('option');
-        optionB.value = player.id;
-        optionB.textContent = player.name;
-        selectB.appendChild(optionB);
+        const lowerQuery = query.toLowerCase();
+        return allPlayers
+            .filter(player => 
+                player.name.toLowerCase().includes(lowerQuery)
+            )
+            .slice(0, 10); // Show up to 10 results (5+ visible, rest scrollable)
+    }
+    
+    // Render dropdown items
+    function renderDropdown(players, query) {
+        dropdown.innerHTML = '';
+        selectedIndex = -1;
+        
+        if (players.length === 0) {
+            dropdown.innerHTML = '<div class="typeahead-empty">No players found</div>';
+            dropdown.classList.add('show');
+            return;
+        }
+        
+        players.forEach((player, index) => {
+            const item = document.createElement('div');
+            item.className = 'typeahead-item';
+            item.dataset.index = index;
+            item.dataset.playerId = player.id;
+            
+            const initials = getInitials(player.name);
+            const highlightedName = highlightMatch(player.name, query);
+            const rank = player.current_rank || 'N/A';
+            
+            item.innerHTML = `
+                <div class="typeahead-avatar">${initials}</div>
+                <div class="typeahead-content">
+                    <div class="typeahead-name">${highlightedName}</div>
+                    <div class="typeahead-meta">Rank: ${rank}</div>
+                </div>
+            `;
+            
+            item.addEventListener('click', () => selectPlayer(player, index));
+            item.addEventListener('mouseenter', () => {
+                setActiveIndex(index);
+            });
+            
+            dropdown.appendChild(item);
+        });
+        
+        dropdown.classList.add('show');
+    }
+    
+    // Set active index (for keyboard navigation)
+    function setActiveIndex(index) {
+        const items = dropdown.querySelectorAll('.typeahead-item');
+        items.forEach((item, i) => {
+            if (i === index) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+        selectedIndex = index;
+    }
+    
+    // Select a player
+    function selectPlayer(player, index) {
+        selectedPlayer = player;
+        input.value = player.name;
+        hiddenInput.value = player.id;
+        dropdown.classList.remove('show');
+        updateClearButton();
+        updateCompareButton();
+    }
+    
+    // Update clear button visibility
+    function updateClearButton() {
+        if (input.value.trim() !== '') {
+            clearBtn.classList.remove('hidden');
+        } else {
+            clearBtn.classList.add('hidden');
+        }
+    }
+    
+    // Handle input typing
+    input.addEventListener('input', (e) => {
+        const query = e.target.value.trim();
+        filteredPlayers = filterPlayers(query);
+        renderDropdown(filteredPlayers, query);
+        updateClearButton();
+        
+        // Clear selection if input changed
+        if (!query) {
+            selectedPlayer = null;
+            hiddenInput.value = '';
+            updateCompareButton();
+        }
     });
+    
+    // Handle keyboard navigation
+    input.addEventListener('keydown', (e) => {
+        if (!dropdown.classList.contains('show')) return;
+        
+        const items = dropdown.querySelectorAll('.typeahead-item');
+        if (items.length === 0) return;
+        
+        switch(e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                setActiveIndex(selectedIndex);
+                items[selectedIndex].scrollIntoView({ block: 'nearest' });
+                break;
+                
+            case 'ArrowUp':
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, -1);
+                if (selectedIndex >= 0) {
+                    setActiveIndex(selectedIndex);
+                    items[selectedIndex].scrollIntoView({ block: 'nearest' });
+                } else {
+                    items.forEach(item => item.classList.remove('active'));
+                }
+                break;
+                
+            case 'Enter':
+                e.preventDefault();
+                if (selectedIndex >= 0 && filteredPlayers[selectedIndex]) {
+                    selectPlayer(filteredPlayers[selectedIndex], selectedIndex);
+                }
+                break;
+                
+            case 'Escape':
+                dropdown.classList.remove('show');
+                input.blur();
+                break;
+        }
+    });
+    
+    // Handle focus
+    input.addEventListener('focus', () => {
+        const query = input.value.trim();
+        if (query) {
+            filteredPlayers = filterPlayers(query);
+            renderDropdown(filteredPlayers, query);
+        }
+    });
+    
+    // Handle blur (with delay to allow clicks)
+    input.addEventListener('blur', (e) => {
+        setTimeout(() => {
+            dropdown.classList.remove('show');
+            
+            // Validate selection
+            const query = input.value.trim();
+            if (query && !selectedPlayer) {
+                // Check if exact match exists
+                const exactMatch = allPlayers.find(p => 
+                    p.name.toLowerCase() === query.toLowerCase()
+                );
+                if (exactMatch) {
+                    selectPlayer(exactMatch, -1);
+                } else {
+                    // Clear invalid input
+                    input.value = '';
+                    hiddenInput.value = '';
+                    selectedPlayer = null;
+                    updateClearButton();
+                    updateCompareButton();
+                }
+            }
+        }, 200);
+    });
+    
+    // Clear button handler
+    clearBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        input.value = '';
+        hiddenInput.value = '';
+        selectedPlayer = null;
+        dropdown.classList.remove('show');
+        updateClearButton();
+        updateCompareButton();
+        input.focus();
+    });
+    
+    // Initialize clear button state
+    updateClearButton();
 }
 
 // Setup event listeners
 function setupEventListeners() {
-    const selectA = document.getElementById('player-a');
-    const selectB = document.getElementById('player-b');
     const compareBtn = document.getElementById('compare-btn');
-    
-    // Enable compare button when both players selected
-    [selectA, selectB].forEach(select => {
-        select.addEventListener('change', () => {
-            const bothSelected = selectA.value && selectB.value && selectA.value !== selectB.value;
-            compareBtn.disabled = !bothSelected;
-        });
-    });
     
     // Compare button click
     compareBtn.addEventListener('click', () => {
-        comparePlayers(selectA.value, selectB.value);
+        const playerAId = document.getElementById('player-a').value;
+        const playerBId = document.getElementById('player-b').value;
+        comparePlayers(playerAId, playerBId);
     });
+}
+
+// Update compare button state
+function updateCompareButton() {
+    const playerAId = document.getElementById('player-a').value;
+    const playerBId = document.getElementById('player-b').value;
+    const compareBtn = document.getElementById('compare-btn');
+    
+    const bothSelected = playerAId && playerBId && playerAId !== playerBId;
+    compareBtn.disabled = !bothSelected;
 }
 
 // Compare two players
@@ -172,62 +391,67 @@ async function generateMatchupStats(playerAId, playerBId) {
     };
 }
 
+// Helper function to safely set text content
+function safeSetText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+}
+
+// Helper function to safely set style
+function safeSetStyle(id, property, value) {
+    const el = document.getElementById(id);
+    if (el) el.style[property] = value;
+}
+
 // Display results
 function displayResults(stats, playerAId, playerBId) {
     const resultsSection = document.getElementById('results-section');
+    if (!resultsSection) {
+        console.error('Results section not found');
+        return;
+    }
     resultsSection.classList.remove('hidden');
     
     const playerA = stats.player_a;
     const playerB = stats.player_b;
     
-    // Win Probability
-    document.getElementById('name-player-a').textContent = playerA.name;
-    document.getElementById('name-player-b').textContent = playerB.name;
-    document.getElementById('prob-value-a').textContent = 
-        (stats.win_probability.player_a * 100).toFixed(1) + '%';
-    document.getElementById('prob-value-b').textContent = 
-        (stats.win_probability.player_b * 100).toFixed(1) + '%';
-    document.getElementById('confidence-badge').textContent = 
-        `Confidence: ${stats.win_probability.confidence}`;
+    // Predicted Edge
+    const probA = stats.win_probability.player_a * 100;
+    const probB = stats.win_probability.player_b * 100;
     
-    // Head-to-Head
-    document.getElementById('h2h-total').textContent = stats.head_to_head.total_matches || '0';
-    document.getElementById('h2h-wins-a').textContent = stats.head_to_head.player_a_wins || '0';
-    document.getElementById('h2h-wins-b').textContent = stats.head_to_head.player_b_wins || '0';
-    document.getElementById('h2h-label-a').textContent = `${playerA.name} Wins`;
-    document.getElementById('h2h-label-b').textContent = `${playerB.name} Wins`;
+    safeSetText('prob-text-a', probA.toFixed(1) + '%');
+    safeSetText('prob-text-b', probB.toFixed(1) + '%');
     
-    // Form
-    document.getElementById('form-name-a').textContent = playerA.name;
-    document.getElementById('form-name-b').textContent = playerB.name;
-    document.getElementById('form-win-pct-a').textContent = 
-        stats.form.player_a.last_10_win_pct ? 
-        (stats.form.player_a.last_10_win_pct * 100).toFixed(1) + '%' : 'N/A';
-    document.getElementById('form-win-pct-b').textContent = 
-        stats.form.player_b.last_10_win_pct ? 
-        (stats.form.player_b.last_10_win_pct * 100).toFixed(1) + '%' : 'N/A';
+    // Update probability bar
+    safeSetStyle('prob-bar-a', 'width', probA + '%');
+    safeSetStyle('prob-bar-b', 'width', probB + '%');
     
-    // Surface Stats
-    document.getElementById('surface-name-a').textContent = playerA.name;
-    document.getElementById('surface-name-b').textContent = playerB.name;
-    document.getElementById('surface-hard-a').textContent = 
-        formatSurfaceStat(stats.surface_stats.hard.player_a);
-    document.getElementById('surface-hard-b').textContent = 
-        formatSurfaceStat(stats.surface_stats.hard.player_b);
-    document.getElementById('surface-clay-a').textContent = 
-        formatSurfaceStat(stats.surface_stats.clay.player_a);
-    document.getElementById('surface-clay-b').textContent = 
-        formatSurfaceStat(stats.surface_stats.clay.player_b);
-    document.getElementById('surface-grass-a').textContent = 
-        formatSurfaceStat(stats.surface_stats.grass.player_a);
-    document.getElementById('surface-grass-b').textContent = 
-        formatSurfaceStat(stats.surface_stats.grass.player_b);
+    // Confidence
+    const confidenceValue = stats.win_probability.confidence === 'high' ? 99 : 
+                           stats.win_probability.confidence === 'medium' ? 75 : 50;
+    safeSetText('confidence-value', confidenceValue);
     
-    // Rankings & Elo
-    document.getElementById('rank-a').textContent = playerA.current_rank || 'N/A';
-    document.getElementById('rank-b').textContent = playerB.current_rank || 'N/A';
-    document.getElementById('elo-a').textContent = Math.round(playerA.current_elo);
-    document.getElementById('elo-b').textContent = Math.round(playerB.current_elo);
+    // Vital Stats
+    safeSetText('rank-a', playerA.current_rank || '--');
+    safeSetText('rank-b', playerB.current_rank || '--');
+    safeSetText('elo-a', Math.round(playerA.current_elo));
+    safeSetText('elo-b', Math.round(playerB.current_elo));
+    
+    // Surface Win Rate
+    safeSetText('surface-name-a-compact', playerA.name);
+    safeSetText('surface-name-b-compact', playerB.name);
+    safeSetText('surface-hard-a-compact', formatSurfaceStat(stats.surface_stats.hard.player_a));
+    safeSetText('surface-hard-b-compact', formatSurfaceStat(stats.surface_stats.hard.player_b));
+    safeSetText('surface-clay-a-compact', formatSurfaceStat(stats.surface_stats.clay.player_a));
+    safeSetText('surface-clay-b-compact', formatSurfaceStat(stats.surface_stats.clay.player_b));
+    safeSetText('surface-grass-a-compact', formatSurfaceStat(stats.surface_stats.grass.player_a));
+    safeSetText('surface-grass-b-compact', formatSurfaceStat(stats.surface_stats.grass.player_b));
+    
+    // Recent Form - Generate dots
+    renderFormDots('form-dots-a', stats.form.player_a.last_10_win_pct);
+    renderFormDots('form-dots-b', stats.form.player_b.last_10_win_pct);
+    safeSetText('form-name-detailed-a', playerA.name);
+    renderFormDots('form-dots-detailed-a', stats.form.player_a.last_10_win_pct);
     
     // Scroll to results
     resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -236,7 +460,43 @@ function displayResults(stats, playerAId, playerBId) {
 // Format surface stat
 function formatSurfaceStat(value) {
     if (value === null || value === undefined) return 'N/A';
-    return (value * 100).toFixed(1) + '%';
+    return (value * 100).toFixed(0) + '%';
+}
+
+// Render form dots (green for wins, red for losses)
+function renderFormDots(containerId, winPct) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    
+    if (winPct === null || winPct === undefined) {
+        // Show placeholder dots
+        for (let i = 0; i < 10; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'form-dot';
+            dot.style.background = '#475569';
+            container.appendChild(dot);
+        }
+        return;
+    }
+    
+    // Generate random win/loss pattern based on win percentage
+    // For now, we'll create a simple pattern
+    const wins = Math.round(winPct * 10);
+    const losses = 10 - wins;
+    
+    // Create win dots (green)
+    for (let i = 0; i < wins; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'form-dot win';
+        container.appendChild(dot);
+    }
+    
+    // Create loss dots (red)
+    for (let i = 0; i < losses; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'form-dot loss';
+        container.appendChild(dot);
+    }
 }
 
 // Show/hide loading

@@ -1,4 +1,4 @@
-# 🎾 Tennis Analytics Dashboard
+# 🎾 Breakpoint Analytics
 
 A data-driven tennis analytics dashboard that compares players and predicts match outcomes using Elo ratings, head-to-head statistics, and surface-specific performance metrics.
 
@@ -32,7 +32,20 @@ Jeff Sackmann CSVs / Live API
 ### Prerequisites
 
 - Python 3.10+
-- pip
+- [uv](https://github.com/astral-sh/uv) - Fast Python package installer
+
+### Installing uv
+
+```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Or with Homebrew (macOS)
+brew install uv
+
+# Or with pip
+pip install uv
+```
 
 ### Installation
 
@@ -41,10 +54,10 @@ Jeff Sackmann CSVs / Live API
 git clone <your-repo-url>
 cd breakpoint-analytics
 
-# Install dependencies
+# Install dependencies with uv
 make install
 # or
-pip install -r requirements.txt
+uv sync
 ```
 
 ### Running the Pipeline
@@ -58,6 +71,8 @@ make ingest    # Download data from Sackmann repo
 make build     # Build features and calculate Elo ratings
 make export    # Export JSON files for dashboard
 ```
+
+**Note**: All Python scripts run via `uv run python` which automatically uses the project's virtual environment.
 
 ### Viewing the Dashboard
 
@@ -92,7 +107,8 @@ breakpoint-analytics/
 ├── outputs/              # JSON files for frontend
 ├── .github/workflows/
 │   └── update-data.yml   # Automated data updates
-├── requirements.txt
+├── pyproject.toml      # Project dependencies (uv)
+├── requirements.txt     # Legacy (for compatibility)
 ├── Makefile
 └── README.md
 ```

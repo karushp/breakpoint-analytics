@@ -1,9 +1,13 @@
-.PHONY: help install ingest build export clean run-dashboard
+.PHONY: help install ingest build export clean run-dashboard sync
+
+# Check if uv is installed
+UV := $(shell command -v uv 2> /dev/null)
 
 help:
-	@echo "Tennis Analytics Dashboard - Makefile Commands"
+	@echo "Breakpoint Analytics - Makefile Commands"
 	@echo ""
-	@echo "  make install      - Install Python dependencies"
+	@echo "  make install      - Install Python dependencies with uv"
+	@echo "  make sync         - Sync dependencies (uv sync)"
 	@echo "  make ingest       - Download and ingest data from Sackmann repo"
 	@echo "  make build        - Build features and analytics"
 	@echo "  make export       - Export data to JSON for dashboard"
@@ -12,16 +16,42 @@ help:
 	@echo "  make run-dashboard - Start local web server for dashboard"
 
 install:
-	pip install -r requirements.txt
+	@if [ -z "$(UV)" ]; then \
+		echo "Error: uv is not installed. Install it with: curl -LsSf https://astral.sh/uv/install.sh | sh"; \
+		exit 1; \
+	fi
+	uv venv
+	uv pip install -r requirements.txt
+
+sync:
+	@if [ -z "$(UV)" ]; then \
+		echo "Error: uv is not installed. Install it with: curl -LsSf https://astral.sh/uv/install.sh | sh"; \
+		exit 1; \
+	fi
+	uv venv
+	uv pip install -r requirements.txt
+	uv pip install -e .
 
 ingest:
-	python pipelines/ingest_sackmann.py
+	@if [ ! -d ".venv" ]; then \
+		echo "Error: Virtual environment not found. Run 'make install' first."; \
+		exit 1; \
+	fi
+	PYTHONPATH=. .venv/bin/python pipelines/ingest_sackmann.py
 
 build:
-	python pipelines/build_features.py
+	@if [ ! -d ".venv" ]; then \
+		echo "Error: Virtual environment not found. Run 'make install' first."; \
+		exit 1; \
+	fi
+	PYTHONPATH=. .venv/bin/python pipelines/build_features.py
 
 export:
-	python pipelines/export_dashboard_data.py
+	@if [ ! -d ".venv" ]; then \
+		echo "Error: Virtual environment not found. Run 'make install' first."; \
+		exit 1; \
+	fi
+	PYTHONPATH=. .venv/bin/python pipelines/export_dashboard_data.py
 
 all: ingest build export
 	@echo "Pipeline complete!"
@@ -35,4 +65,8 @@ clean:
 run-dashboard:
 	@echo "Starting local web server..."
 	@echo "Open http://localhost:8000/dashboard/ in your browser"
-	python -m http.server 8000
+	@if [ -d ".venv" ]; then \
+		.venv/bin/python -m http.server 8000; \
+	else \
+		python3 -m http.server 8000; \
+	fi

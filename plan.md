@@ -14,7 +14,7 @@ Below is a **clear project layout + workflow** you can directly plan against.
 
 ---
 
-# 🏗️ Tennis Analytics Dashboard — Project Layout
+# 🏗️ Breakpoint Analytics — Project Layout
 
 ## 1️⃣ High-Level Architecture
 
@@ -54,7 +54,7 @@ GitHub Pages just **displays results**.
 ## 2️⃣ Repo Structure (Recommended)
 
 ```
-tennis-analytics-dashboard/
+breakpoint-analytics/
 │
 ├── data/
 │   ├── raw/
