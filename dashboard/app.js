@@ -432,6 +432,8 @@ function displayResults(stats, playerAId, playerBId) {
     safeSetText('confidence-value', confidenceValue);
     
     // Vital Stats
+    safeSetText('vital-name-a', playerA.name);
+    safeSetText('vital-name-b', playerB.name);
     safeSetText('rank-a', playerA.current_rank || '--');
     safeSetText('rank-b', playerB.current_rank || '--');
     safeSetText('elo-a', Math.round(playerA.current_elo));
@@ -448,10 +450,10 @@ function displayResults(stats, playerAId, playerBId) {
     safeSetText('surface-grass-b-compact', formatSurfaceStat(stats.surface_stats.grass.player_b));
     
     // Recent Form - Generate dots
+    safeSetText('form-name-a', playerA.name);
+    safeSetText('form-name-b', playerB.name);
     renderFormDots('form-dots-a', stats.form.player_a.last_10_win_pct);
     renderFormDots('form-dots-b', stats.form.player_b.last_10_win_pct);
-    safeSetText('form-name-detailed-a', playerA.name);
-    renderFormDots('form-dots-detailed-a', stats.form.player_a.last_10_win_pct);
     
     // Scroll to results
     resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -466,21 +468,22 @@ function formatSurfaceStat(value) {
 // Render form dots (green for wins, red for losses)
 function renderFormDots(containerId, winPct) {
     const container = document.getElementById(containerId);
+    if (!container) return;
+    
     container.innerHTML = '';
     
+    // Always show exactly 10 dots
     if (winPct === null || winPct === undefined) {
-        // Show placeholder dots
+        // Show placeholder dots (grey)
         for (let i = 0; i < 10; i++) {
             const dot = document.createElement('div');
-            dot.className = 'form-dot';
-            dot.style.background = '#475569';
+            dot.className = 'form-dot placeholder';
             container.appendChild(dot);
         }
         return;
     }
     
-    // Generate random win/loss pattern based on win percentage
-    // For now, we'll create a simple pattern
+    // Generate win/loss pattern based on win percentage
     const wins = Math.round(winPct * 10);
     const losses = 10 - wins;
     

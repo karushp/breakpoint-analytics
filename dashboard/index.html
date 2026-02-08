@@ -70,23 +70,18 @@
 
                 <!-- Three Column Cards -->
                 <div class="three-column-layout">
-                    <!-- Vital Stats Card -->
+                    <!-- Recent Form Card -->
                     <section class="stats-card">
-                        <h2>Vital Stats</h2>
-                        <div class="vital-stats">
-                            <div class="vital-stat-row">
-                                <div class="vital-stat-label">Current Rank</div>
-                                <div class="vital-stat-values">
-                                    <span class="vital-value" id="rank-a">--</span>
-                                    <span class="vital-value" id="rank-b">--</span>
-                                </div>
+                        <h2>Recent Form</h2>
+                        <div class="recent-form">
+                            <div class="form-label">Last 10 Matches</div>
+                            <div class="form-player-group">
+                                <div class="form-player-name" id="form-name-a">Player A</div>
+                                <div class="form-dots" id="form-dots-a"></div>
                             </div>
-                            <div class="vital-stat-row">
-                                <div class="vital-stat-label">Elo Rating</div>
-                                <div class="vital-stat-values">
-                                    <span class="vital-value" id="elo-a">--</span>
-                                    <span class="vital-value" id="elo-b">--</span>
-                                </div>
+                            <div class="form-player-group">
+                                <div class="form-player-name" id="form-name-b">Player B</div>
+                                <div class="form-dots" id="form-dots-b"></div>
                             </div>
                         </div>
                     </section>
@@ -94,45 +89,49 @@
                     <!-- Surface Win Rate Card -->
                     <section class="stats-card">
                         <h2>Surface Win Rate</h2>
-                        <table class="surface-table-compact">
-                            <thead>
-                                <tr>
-                                    <th id="surface-name-a-compact">Player A</th>
-                                    <th id="surface-name-b-compact">Player B</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td class="surface-label">Hard</td>
-                                    <td class="surface-values">
-                                        <span id="surface-hard-a-compact">--</span> / <span id="surface-hard-b-compact">--</span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="surface-label">Clay</td>
-                                    <td class="surface-values">
-                                        <span id="surface-clay-a-compact">--</span> / <span id="surface-clay-b-compact">--</span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="surface-label">Grass</td>
-                                    <td class="surface-values">
-                                        <span id="surface-grass-a-compact">--</span> / <span id="surface-grass-b-compact">--</span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div class="surface-compact">
+                            <div class="surface-header">
+                                <div class="surface-label"></div>
+                                <div class="surface-player-name" id="surface-name-a-compact">Player A</div>
+                                <div class="surface-player-name" id="surface-name-b-compact">Player B</div>
+                            </div>
+                            <div class="surface-row">
+                                <div class="surface-label">Hard</div>
+                                <div class="surface-values" id="surface-hard-a-compact">--</div>
+                                <div class="surface-values" id="surface-hard-b-compact">--</div>
+                            </div>
+                            <div class="surface-row">
+                                <div class="surface-label">Clay</div>
+                                <div class="surface-values" id="surface-clay-a-compact">--</div>
+                                <div class="surface-values" id="surface-clay-b-compact">--</div>
+                            </div>
+                            <div class="surface-row">
+                                <div class="surface-label">Grass</div>
+                                <div class="surface-values" id="surface-grass-a-compact">--</div>
+                                <div class="surface-values" id="surface-grass-b-compact">--</div>
+                            </div>
+                        </div>
                     </section>
 
-                    <!-- Recent Form Card -->
+                    <!-- Vital Stats Card -->
                     <section class="stats-card">
-                        <h2>Recent Form</h2>
-                        <div class="recent-form">
-                            <div class="form-label">Last 10 Matches</div>
-                            <div class="form-dots" id="form-dots-a"></div>
-                            <div class="form-dots" id="form-dots-b"></div>
-                            <div class="form-player-name" id="form-name-detailed-a"></div>
-                            <div class="form-dots" id="form-dots-detailed-a"></div>
+                        <h2>Vital Stats</h2>
+                        <div class="vital-stats">
+                            <div class="vital-header">
+                                <div class="vital-label"></div>
+                                <div class="vital-player-name" id="vital-name-a">Player A</div>
+                                <div class="vital-player-name" id="vital-name-b">Player B</div>
+                            </div>
+                            <div class="vital-row">
+                                <div class="vital-label">Current Rank</div>
+                                <div class="vital-value" id="rank-a">--</div>
+                                <div class="vital-value" id="rank-b">--</div>
+                            </div>
+                            <div class="vital-row">
+                                <div class="vital-label">Elo Rating</div>
+                                <div class="vital-value" id="elo-a">--</div>
+                                <div class="vital-value" id="elo-b">--</div>
+                            </div>
                         </div>
                     </section>
                 </div>
