@@ -436,8 +436,8 @@ function displayResults(stats, playerAId, playerBId) {
     safeSetText('vital-name-b', playerB.name);
     safeSetText('rank-a', playerA.current_rank || '--');
     safeSetText('rank-b', playerB.current_rank || '--');
-    safeSetText('elo-a', Math.round(playerA.current_elo));
-    safeSetText('elo-b', Math.round(playerB.current_elo));
+    safeSetText('elo-a', Math.round(playerA.current_elo) || '--');
+    safeSetText('elo-b', Math.round(playerB.current_elo) || '--');
     
     // Surface Win Rate
     safeSetText('surface-name-a-compact', playerA.name);
@@ -454,6 +454,12 @@ function displayResults(stats, playerAId, playerBId) {
     safeSetText('form-name-b', playerB.name);
     renderFormDots('form-dots-a', stats.form.player_a.last_10_win_pct);
     renderFormDots('form-dots-b', stats.form.player_b.last_10_win_pct);
+    
+    // Surface Win Rate - Show combined win rate (for now showing N/A)
+    safeSetText('surface-name-a-compact', playerA.name);
+    safeSetText('surface-name-b-compact', playerB.name);
+    safeSetText('surface-win-rate-a-compact', 'N/A');
+    safeSetText('surface-win-rate-b-compact', 'N/A');
     
     // Scroll to results
     resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
