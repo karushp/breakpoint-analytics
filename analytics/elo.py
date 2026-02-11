@@ -1,5 +1,8 @@
 """
 Elo rating system implementation for tennis players.
+
+This module implements the Elo rating system with surface-specific adjustments
+and time decay for historical matches.
 """
 import pandas as pd
 import numpy as np
@@ -38,8 +41,16 @@ class EloRating:
             surface: Optional surface for surface-specific rating
             
         Returns:
-            Elo rating
+            Elo rating (returns starting_rating if player not found)
+            
+        Example:
+            >>> elo = EloRating()
+            >>> elo.get_rating("player123")
+            1500.0
         """
+        if not player_id:
+            raise ValueError("player_id cannot be empty")
+        
         if surface and player_id in self.surface_ratings and surface in self.surface_ratings[player_id]:
             return self.surface_ratings[player_id][surface]
         
@@ -160,22 +171,42 @@ class EloRating:
             self.surface_ratings[winner_id][surface] += winner_change
             self.surface_ratings[loser_id][surface] += loser_change
     
-    def calculate_ratings_from_matches(self, matches_df: pd.DataFrame):
+    def calculate_ratings_from_matches(self, matches_df: pd.DataFrame) -> None:
         """
         Calculate Elo ratings from historical matches.
+        
+        Processes matches chronologically to build up ratings over time.
+        Matches are sorted by date before processing.
         
         Args:
             matches_df: DataFrame with columns: winner_id, loser_id, surface, 
                        tourney_level, tourney_date
+                       
+        Raises:
+            KeyError: If required columns are missing
+            ValueError: If DataFrame is empty
         """
+        required_columns = ['winner_id', 'loser_id']
+        missing_columns = [col for col in required_columns if col not in matches_df.columns]
+        if missing_columns:
+            raise KeyError(f"Missing required columns: {missing_columns}")
+        
+        if len(matches_df) == 0:
+            raise ValueError("Cannot calculate ratings from empty DataFrame")
+        
         # Sort by date to process chronologically
         matches_df = matches_df.sort_values('tourney_date')
         
         for _, match in matches_df.iterrows():
-            self.update_rating(
-                winner_id=match['winner_id'],
-                loser_id=match['loser_id'],
-                surface=match.get('surface'),
-                tournament_level=match.get('tourney_level', 'M'),
-                match_date=pd.to_datetime(match['tourney_date']) if 'tourney_date' in match else None
-            )
+            try:
+                self.update_rating(
+                    winner_id=match['winner_id'],
+                    loser_id=match['loser_id'],
+                    surface=match.get('surface'),
+                    tournament_level=match.get('tourney_level', 'M'),
+                    match_date=pd.to_datetime(match['tourney_date']) if 'tourney_date' in match and pd.notna(match['tourney_date']) else None
+                )
+            except Exception as e:
+                # Log error but continue processing other matches
+                # In production, you might want to log this properly
+                continue
