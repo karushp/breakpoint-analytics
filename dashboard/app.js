@@ -403,6 +403,159 @@ function safeSetStyle(id, property, value) {
     if (el) el.style[property] = value;
 }
 
+// Format metric value based on type
+function formatMetricValue(value, metricType) {
+    if (value === null || value === undefined || value === '') {
+        return 'N/A';
+    }
+    
+    switch(metricType) {
+        case 'percentage':
+            return (value * 100).toFixed(1) + '%';
+        case 'integer':
+            return Math.round(value).toString();
+        case 'decimal':
+            return value.toFixed(2);
+        case 'decimal_percent':
+            return value.toFixed(1) + '%';  // For values already in percentage form (0-100)
+        case 'surface':
+            return value || 'N/A';
+        case 'minutes':
+            return Math.round(value).toString() + ' min';
+        case 'age':
+            return value.toFixed(1);
+        default:
+            return value.toString();
+    }
+}
+
+// Compare two metric values and determine advantage
+function compareMetrics(valueA, valueB, higherIsBetter = true) {
+    if (valueA === null || valueA === undefined || valueA === '') {
+        return { advantage: 'b', diff: null };
+    }
+    if (valueB === null || valueB === undefined || valueB === '') {
+        return { advantage: 'a', diff: null };
+    }
+    
+    const diff = valueA - valueB;
+    if (Math.abs(diff) < 0.01) { // Essentially equal
+        return { advantage: 'tie', diff: 0 };
+    }
+    
+    if (higherIsBetter) {
+        return diff > 0 ? { advantage: 'a', diff } : { advantage: 'b', diff: -diff };
+    } else {
+        return diff < 0 ? { advantage: 'a', diff: -diff } : { advantage: 'b', diff };
+    }
+}
+
+// Display detailed metrics comparison
+function displayDetailedMetrics(playerA, playerB) {
+    const metricsA = playerA.detailed_metrics || {};
+    const metricsB = playerB.detailed_metrics || {};
+    
+    // Set player names
+    safeSetText('metrics-name-a', playerA.name);
+    safeSetText('metrics-name-b', playerB.name);
+    
+    // Helper function to display a metric row
+    function displayMetricRow(metricKey, labelA, labelB, labelAdvantage, 
+                              valueA, valueB, formatType, higherIsBetter = true) {
+        const comparison = compareMetrics(valueA, valueB, higherIsBetter);
+        const formattedA = formatMetricValue(valueA, formatType);
+        const formattedB = formatMetricValue(valueB, formatType);
+        
+        safeSetText(labelA, formattedA);
+        safeSetText(labelB, formattedB);
+        
+        let advantageText = '--';
+        let advantageClass = '';
+        if (comparison.advantage === 'a') {
+            advantageText = 'A';
+            advantageClass = 'player-a';
+        } else if (comparison.advantage === 'b') {
+            advantageText = 'B';
+            advantageClass = 'player-b';
+        } else if (comparison.advantage === 'tie') {
+            advantageText = '—';
+            advantageClass = 'tie';
+        }
+        
+        const advantageEl = document.getElementById(labelAdvantage);
+        if (advantageEl) {
+            advantageEl.textContent = advantageText;
+            advantageEl.className = 'metric-advantage ' + advantageClass;
+        }
+    }
+    
+    // Display each metric
+    displayMetricRow('avg_winning_margin', 
+        'metric-avg-winning-margin-a', 'metric-avg-winning-margin-b', 'advantage-avg-winning-margin',
+        metricsA.avg_winning_margin, metricsB.avg_winning_margin, 'decimal', true);
+    
+    displayMetricRow('first_set_win_pct',
+        'metric-first-set-win-pct-a', 'metric-first-set-win-pct-b', 'advantage-first-set-win-pct',
+        metricsA.first_set_win_pct, metricsB.first_set_win_pct, 'percentage', true);
+    
+    displayMetricRow('second_set_win_pct',
+        'metric-second-set-win-pct-a', 'metric-second-set-win-pct-b', 'advantage-second-set-win-pct',
+        metricsA.second_set_win_pct, metricsB.second_set_win_pct, 'percentage', true);
+    
+    // ace_pct is already a percentage (0-100), not a decimal (0-1)
+    displayMetricRow('ace_pct',
+        'metric-ace-pct-a', 'metric-ace-pct-b', 'advantage-ace-pct',
+        metricsA.ace_pct, metricsB.ace_pct, 'decimal_percent', true);
+    
+    displayMetricRow('avg_minutes_for_wins',
+        'metric-avg-minutes-wins-a', 'metric-avg-minutes-wins-b', 'advantage-avg-minutes-wins',
+        metricsA.avg_minutes_for_wins, metricsB.avg_minutes_for_wins, 'minutes', false);
+    
+    displayMetricRow('avg_losing_game_time',
+        'metric-avg-losing-game-time-a', 'metric-avg-losing-game-time-b', 'advantage-avg-losing-game-time',
+        metricsA.avg_losing_game_time, metricsB.avg_losing_game_time, 'minutes', false);
+    
+    displayMetricRow('avg_opponent_age_when_won',
+        'metric-avg-opp-age-won-a', 'metric-avg-opp-age-won-b', 'advantage-avg-opp-age-won',
+        metricsA.avg_opponent_age_when_won, metricsB.avg_opponent_age_when_won, 'age', false);
+    
+    displayMetricRow('avg_opponent_age_when_lost',
+        'metric-avg-opp-age-lost-a', 'metric-avg-opp-age-lost-b', 'advantage-avg-opp-age-lost',
+        metricsA.avg_opponent_age_when_lost, metricsB.avg_opponent_age_when_lost, 'age', false);
+    
+    displayMetricRow('form_last_10_wins',
+        'metric-form-10-a', 'metric-form-10-b', 'advantage-form-10',
+        metricsA.form_last_10_wins, metricsB.form_last_10_wins, 'decimal', true);
+    
+    displayMetricRow('form_last_5_wins',
+        'metric-form-5-a', 'metric-form-5-b', 'advantage-form-5',
+        metricsA.form_last_5_wins, metricsB.form_last_5_wins, 'decimal', true);
+    
+    // Most lost surface - special handling (string comparison)
+    const surfaceA = metricsA.most_lost_surface || 'N/A';
+    const surfaceB = metricsB.most_lost_surface || 'N/A';
+    safeSetText('metric-most-lost-surface-a', surfaceA);
+    safeSetText('metric-most-lost-surface-b', surfaceB);
+    const surfaceAdvantageEl = document.getElementById('advantage-most-lost-surface');
+    if (surfaceAdvantageEl) {
+        if (surfaceA === 'N/A' && surfaceB === 'N/A') {
+            surfaceAdvantageEl.textContent = '—';
+            surfaceAdvantageEl.className = 'metric-advantage tie';
+        } else if (surfaceA === 'N/A') {
+            surfaceAdvantageEl.textContent = 'B';
+            surfaceAdvantageEl.className = 'metric-advantage player-b';
+        } else if (surfaceB === 'N/A') {
+            surfaceAdvantageEl.textContent = 'A';
+            surfaceAdvantageEl.className = 'metric-advantage player-a';
+        } else {
+            // Lower is better (fewer losses on a surface is better)
+            // This is a simplified comparison - in reality, we'd need to compare actual loss rates
+            surfaceAdvantageEl.textContent = '—';
+            surfaceAdvantageEl.className = 'metric-advantage tie';
+        }
+    }
+}
+
 // Display results
 function displayResults(stats, playerAId, playerBId) {
     const resultsSection = document.getElementById('results-section');
@@ -460,6 +613,9 @@ function displayResults(stats, playerAId, playerBId) {
     safeSetText('surface-name-b-compact', playerB.name);
     safeSetText('surface-win-rate-a-compact', 'N/A');
     safeSetText('surface-win-rate-b-compact', 'N/A');
+    
+    // Detailed Metrics
+    displayDetailedMetrics(playerA, playerB);
     
     // Scroll to results
     resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });

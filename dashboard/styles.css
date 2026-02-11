@@ -475,6 +475,99 @@ main {
     text-overflow: ellipsis;
 }
 
+/* Detailed Metrics Section */
+.detailed-metrics-section {
+    margin-top: 30px;
+    background: #1E293B;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+}
+
+.detailed-metrics-section h2 {
+    color: white;
+    font-size: 1.1em;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.detailed-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.metrics-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #334155;
+    align-items: center;
+}
+
+.metric-label {
+    color: #94a3b8;
+    font-size: 0.9em;
+    text-align: left;
+    font-weight: 500;
+}
+
+.metric-player-name {
+    color: white;
+    font-size: 0.95em;
+    font-weight: 600;
+    text-align: center;
+    min-height: 1.2em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.metric-advantage {
+    color: #94a3b8;
+    font-size: 0.85em;
+    text-align: center;
+    font-weight: 500;
+}
+
+.metric-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 15px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #334155;
+}
+
+.metric-row:last-child {
+    border-bottom: none;
+}
+
+.metric-row:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.metric-value {
+    color: white;
+    font-size: 0.9em;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.metric-advantage.player-a {
+    color: #4CAF50;
+}
+
+.metric-advantage.player-b {
+    color: #9BB5FF;
+}
+
+.metric-advantage.tie {
+    color: #94a3b8;
+}
+
 /* Surface Compact */
 .surface-compact {
     display: flex;
