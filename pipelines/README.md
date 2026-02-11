@@ -8,6 +8,8 @@ The pipelines follow a sequential workflow:
 
 ```
 Raw Data → Ingestion → Feature Building → Export → Dashboard
+                                    ↓
+                              Validation (optional)
 ```
 
 Each pipeline performs a specific transformation step in the analytics pipeline.
@@ -140,6 +142,81 @@ uv run python pipelines/export_dashboard_data.py
 
 ---
 
+### 4. `validate_models.py`
+
+**Purpose**: Validates tennis match prediction models using time-based splitting and walk-forward validation.
+
+**What it does**:
+- Loads normalized match data from ingestion pipeline
+- Splits data chronologically into train/test sets (80/20 default)
+- Evaluates Elo-only model performance
+- Evaluates Hybrid model (Elo + Metrics) performance
+- Compares both models using multiple metrics
+- Saves validation results to JSON
+
+**Key Functions**:
+- `load_match_data(data_path)`: Loads match data from CSV
+- `save_results(results, output_path)`: Saves validation results to JSON
+- `main()`: Orchestrates the validation process
+
+**Evaluation Metrics**:
+- **Accuracy**: Percentage of correct predictions
+- **Brier Score**: Probability calibration (lower is better)
+- **Log Loss**: Probability quality (lower is better)
+- **ROC AUC**: Discrimination ability (higher is better)
+- **Calibration Error**: How well probabilities match outcomes (lower is better)
+
+**Validation Approach**:
+- **Time-based splitting**: Training data always comes before test data (no data leakage)
+- **Walk-forward validation**: Elo ratings update incrementally during evaluation
+- **Chronological processing**: Matches processed in date order
+- **Realistic simulation**: Mimics real-world prediction scenarios
+
+**Output**:
+- `outputs/validation_results.json`: Complete validation results with metrics and comparison
+  - Structure: `{elo_only: {...}, hybrid: {...}, improvement: {...}, metadata: {...}}`
+  - Includes calibration curves, probability statistics, and model comparison
+
+**Usage**:
+```bash
+uv run python pipelines/validate_models.py
+```
+
+**Dependencies**:
+- Requires `data/raw/matches_combined.csv` from ingestion pipeline
+- Uses `analytics.validation.MatchPredictorValidator` for validation
+- Uses `analytics.elo.EloRating` and `analytics.feature_engineering.FeatureEngineer`
+- Requires `scikit-learn` for evaluation metrics
+
+**Configuration**:
+- Train/test split: `analytics.config.VALIDATION_TRAIN_SPLIT` (default: 0.8)
+- Minimum training matches: `analytics.config.VALIDATION_MIN_TRAIN_MATCHES` (default: 100)
+- Minimum test matches: `analytics.config.VALIDATION_MIN_TEST_MATCHES` (default: 50)
+- Can customize date ranges in `validate_models.py` if needed
+
+**Example Output**:
+```
+============================================================
+Model Comparison
+============================================================
+
+Metric               Elo-Only        Hybrid          Improvement
+-----------------------------------------------------------------
+Accuracy             58.42%          59.42%                 +1.71%
+Brier Score          0.2403          0.2333                  +2.91%
+Log Loss             0.7207          0.7586                  -5.26%
+```
+
+**When to Run**:
+- After building features to evaluate model performance
+- When tuning model weights or parameters
+- Periodically to monitor model performance over time
+- Before deploying model changes to production
+
+See `VALIDATION_GUIDE.md` in project root for detailed validation documentation.
+
+---
+
 ## Execution Order
 
 To run the complete pipeline from scratch:
@@ -153,9 +230,15 @@ uv run python pipelines/build_features.py
 
 # Step 3: Export data for dashboard
 uv run python pipelines/export_dashboard_data.py
+
+# Step 4: Validate models (optional but recommended)
+uv run python pipelines/validate_models.py
 ```
 
-**Note**: `export_dashboard_data.py` will automatically rebuild features if needed, so you can skip step 2 if you only need dashboard exports.
+**Notes**:
+- `export_dashboard_data.py` will automatically rebuild features if needed, so you can skip step 2 if you only need dashboard exports
+- Validation can be run anytime after ingestion to evaluate model performance
+- Run validation after tuning model weights/parameters to measure improvements
 
 ---
 
@@ -181,6 +264,13 @@ uv run python pipelines/export_dashboard_data.py
 │    Loads features → Filters → Exports JSON                  │
 │    Output: outputs/player_summary.json                      │
 │            outputs/elo_rankings.json                         │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. validate_models.py (optional)                           │
+│    Time-based split → Walk-forward validation → Compare     │
+│    Output: outputs/validation_results.json                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -210,6 +300,13 @@ uv run python pipelines/export_dashboard_data.py
 - **`outputs/matchup_stats.json`**: Generated on-demand
   - Structure: Win probabilities, metric comparisons, H2H, form, surface stats
   - Used by: Dashboard frontend (player comparison)
+
+### From `validate_models.py`:
+- **`outputs/validation_results.json`**: Model validation and comparison results
+  - Structure: `{elo_only: {...}, hybrid: {...}, improvement: {...}, metadata: {...}}`
+  - Includes: Accuracy, Brier Score, Log Loss, ROC AUC, Calibration Error
+  - Includes: Calibration curves, probability statistics, model comparison
+  - Used by: Model evaluation, performance monitoring, parameter tuning
 
 ---
 
@@ -281,7 +378,9 @@ All configuration is centralized in `analytics/config.py`:
   - `win_probability.py`: Win prediction
   - `metrics_comparator.py`: Metric comparison
   - `score_parser.py`: Score parsing
+  - `validation.py`: Model validation and evaluation
   - `utils.py`: Utility functions
+- **scikit-learn**: Evaluation metrics (for validation pipeline)
 
 ---
 
@@ -302,6 +401,18 @@ All configuration is centralized in `analytics/config.py`:
 - Ensure you're running the export pipeline after feature building
 - Check file permissions in `outputs/` directory
 
+### "Insufficient training data" (validation)
+- Use more years of data or reduce `VALIDATION_MIN_TRAIN_MATCHES` threshold
+- Check that date ranges are valid and contain sufficient matches
+
+### "Insufficient test data" (validation)
+- Adjust date ranges or reduce `VALIDATION_MIN_TEST_MATCHES` threshold
+- Ensure test period comes after training period chronologically
+
+### Validation shows 100% accuracy
+- This indicates a bug - predictions should be based on probability > 0.5
+- Check that validation logic is correctly implemented
+
 ---
 
 ## Future Enhancements
@@ -313,3 +424,7 @@ Potential improvements:
 - API endpoint for on-demand matchup stats
 - Historical Elo trend tracking
 - Tournament-specific analytics
+- Walk-forward cross-validation (multiple time windows)
+- Automated hyperparameter tuning based on validation results
+- Real-time model performance monitoring
+- A/B testing framework for model variants

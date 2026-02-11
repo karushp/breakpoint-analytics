@@ -1,0 +1,74 @@
+{
+  "elo_only": {
+    "model_name": "Elo-Only",
+    "n_matches": 1710,
+    "accuracy": 0.5842,
+    "brier_score": 0.2403,
+    "log_loss": 0.7207,
+    "roc_auc": null,
+    "calibration_error": 0.4503,
+    "mean_probability": 0.5116,
+    "std_probability": 0.042,
+    "high_confidence_predictions": 6,
+    "medium_confidence_predictions": 1704,
+    "calibration_curve": {
+      "fraction_of_positives": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mean_predicted_value": [
+        0.3878894284869365,
+        0.4795781596169762,
+        0.5283268028063344,
+        0.6248795471798434,
+        0.7276535439785912
+      ]
+    }
+  },
+  "hybrid": {
+    "model_name": "Hybrid",
+    "n_matches": 1710,
+    "accuracy": 0.5942,
+    "brier_score": 0.2333,
+    "log_loss": 0.7586,
+    "roc_auc": null,
+    "calibration_error": 0.4507,
+    "mean_probability": 0.5242,
+    "std_probability": 0.0833,
+    "high_confidence_predictions": 14,
+    "medium_confidence_predictions": 1696,
+    "calibration_curve": {
+      "fraction_of_positives": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mean_predicted_value": [
+        0.38138709677419347,
+        0.45030701754385977,
+        0.5558351309707237,
+        0.6274674220963177,
+        0.7314999999999999
+      ]
+    }
+  },
+  "improvement": {
+    "accuracy": 1.71,
+    "brier_score": 2.91,
+    "log_loss": -5.26
+  },
+  "metadata": {
+    "validation_date": "2026-02-11T11:04:43.872095",
+    "train_start": "2022-01-03T00:00:00",
+    "train_end": "2024-05-16T00:00:00",
+    "test_start": "2024-05-17T00:00:00",
+    "test_end": "2024-12-18T00:00:00",
+    "n_train_matches": 7269,
+    "n_test_matches": 1710
+  }
+}
