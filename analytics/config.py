@@ -65,3 +65,8 @@ METRICS_WEIGHT = 0.35  # Metrics get 35% weight
 # Fallback Configuration
 USE_METRICS_FALLBACK = True  # If True, fall back to Elo-only if insufficient metrics
 MIN_METRICS_REQUIRED = 3  # Minimum number of non-null metrics required to use metric-based prob
+
+# Validation Configuration
+VALIDATION_TRAIN_SPLIT = 0.8  # 80% of data for training, 20% for testing
+VALIDATION_MIN_TRAIN_MATCHES = 100  # Minimum matches required in training set
+VALIDATION_MIN_TEST_MATCHES = 50  # Minimum matches required in test set
