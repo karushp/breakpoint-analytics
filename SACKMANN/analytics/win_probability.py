@@ -11,7 +11,10 @@ from analytics.config import (
     ELO_WEIGHT,
     METRICS_WEIGHT,
     USE_METRICS_FALLBACK,
-    MIN_METRICS_REQUIRED
+    MIN_METRICS_REQUIRED,
+    USE_LATEST_GAME_RECENT_WIN_BONUS,
+    LATEST_GAME_RECENT_DAYS,
+    LATEST_GAME_RECENT_WIN_BOOST,
 )
 
 
@@ -150,6 +153,25 @@ class WinProbabilityCalculator:
             # Placeholder for now
             pass
         
+        # Apply latest-game recency bonus if enabled
+        if (
+            USE_LATEST_GAME_RECENT_WIN_BONUS
+            and self.feature_engineer
+        ):
+            ref_date = self.feature_engineer.matches_df['tourney_date'].max()
+            if hasattr(ref_date, 'to_pydatetime'):
+                ref_date = ref_date.to_pydatetime()
+            info_a = self.feature_engineer.get_latest_game_info(player_a_id, ref_date)
+            info_b = self.feature_engineer.get_latest_game_info(player_b_id, ref_date)
+            prob_a = result['player_a_win_prob']
+            if info_a.get('days_ago') is not None and info_a['days_ago'] <= LATEST_GAME_RECENT_DAYS and info_a.get('is_win'):
+                prob_a = prob_a + LATEST_GAME_RECENT_WIN_BOOST
+            if info_b.get('days_ago') is not None and info_b['days_ago'] <= LATEST_GAME_RECENT_DAYS and info_b.get('is_win'):
+                prob_a = prob_a - LATEST_GAME_RECENT_WIN_BOOST
+            prob_a = max(0.05, min(0.95, prob_a))
+            result['player_a_win_prob'] = round(prob_a, 3)
+            result['player_b_win_prob'] = round(1 - prob_a, 3)
+        
         return result
     
     def calculate_metric_based_probability(
@@ -261,6 +283,23 @@ class WinProbabilityCalculator:
             # Small adjustment: ±3% max based on H2H (reduced since we have metrics now)
             h2h_adjustment = h2h_advantage * 0.03
             final_prob_a = max(0.05, min(0.95, final_prob_a + h2h_adjustment))
+            final_prob_b = 1 - final_prob_a
+        
+        # Apply latest-game recency bonus: if latest match was a win within last N days, small boost
+        if (
+            USE_LATEST_GAME_RECENT_WIN_BONUS
+            and self.feature_engineer
+        ):
+            ref_date = self.feature_engineer.matches_df['tourney_date'].max()
+            if hasattr(ref_date, 'to_pydatetime'):
+                ref_date = ref_date.to_pydatetime()
+            info_a = self.feature_engineer.get_latest_game_info(player_a_id, ref_date)
+            info_b = self.feature_engineer.get_latest_game_info(player_b_id, ref_date)
+            if info_a.get('days_ago') is not None and info_a['days_ago'] <= LATEST_GAME_RECENT_DAYS and info_a.get('is_win'):
+                final_prob_a = final_prob_a + LATEST_GAME_RECENT_WIN_BOOST
+            if info_b.get('days_ago') is not None and info_b['days_ago'] <= LATEST_GAME_RECENT_DAYS and info_b.get('is_win'):
+                final_prob_a = final_prob_a - LATEST_GAME_RECENT_WIN_BOOST
+            final_prob_a = max(0.05, min(0.95, final_prob_a))
             final_prob_b = 1 - final_prob_a
         
         result = {

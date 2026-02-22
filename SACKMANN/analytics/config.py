@@ -66,6 +66,12 @@ METRICS_WEIGHT = 0.35  # Metrics get 35% weight
 USE_METRICS_FALLBACK = True  # If True, fall back to Elo-only if insufficient metrics
 MIN_METRICS_REQUIRED = 3  # Minimum number of non-null metrics required to use metric-based prob
 
+# Latest-Game Recency Bonus
+# If a player's most recent match was a win and within this many days, give a small probability boost
+USE_LATEST_GAME_RECENT_WIN_BONUS = True
+LATEST_GAME_RECENT_DAYS = 90  # 3 months
+LATEST_GAME_RECENT_WIN_BOOST = 0.02  # e.g. +2% win probability when condition holds
+
 # Validation Configuration
 VALIDATION_TRAIN_SPLIT = 0.8  # 80% of data for training, 20% for testing
 VALIDATION_MIN_TRAIN_MATCHES = 100  # Minimum matches required in training set

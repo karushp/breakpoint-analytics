@@ -88,6 +88,48 @@ class FeatureEngineer:
             'avg_opponent_elo': None  # Placeholder - would need Elo system
         }
     
+    def get_latest_game_info(
+        self,
+        player_id: str,
+        reference_date: Optional[datetime] = None
+    ) -> Dict:
+        """
+        Get the player's most recent match: date, whether they won, and days ago.
+        
+        Used for recency bonus: if latest game is within last N days and a win,
+        the player can receive a small boost in win probability.
+        
+        Args:
+            player_id: Player identifier
+            reference_date: Date to measure "days ago" from (default: latest date in data)
+            
+        Returns:
+            Dict with 'date', 'is_win', 'days_ago' (None if no matches)
+        """
+        player_matches = self._get_player_matches(player_id)
+        if len(player_matches) == 0:
+            return {'date': None, 'is_win': None, 'days_ago': None}
+        
+        latest = player_matches.sort_values('tourney_date', ascending=False).iloc[0]
+        match_date = latest['tourney_date']
+        if pd.isna(match_date):
+            return {'date': None, 'is_win': None, 'days_ago': None}
+        # Ensure we have a date-like for subtraction
+        if hasattr(match_date, 'to_pydatetime'):
+            match_date = match_date.to_pydatetime()
+        if reference_date is None:
+            ref = self.matches_df['tourney_date'].max()
+            if hasattr(ref, 'to_pydatetime'):
+                ref = ref.to_pydatetime()
+            reference_date = ref
+        days_ago = (reference_date - match_date).days
+        is_win = latest['winner_id'] == player_id
+        return {
+            'date': match_date,
+            'is_win': bool(is_win),
+            'days_ago': days_ago
+        }
+    
     def get_surface_stats(self, player_id: str) -> Dict[str, Dict[str, Optional[float]]]:
         """
         Get surface-specific statistics.
