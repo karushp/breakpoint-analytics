@@ -1,212 +1,88 @@
 # 🎾 Breakpoint Analytics
 
-A data-driven tennis analytics dashboard that compares players and predicts match outcomes using Elo ratings, head-to-head statistics, and surface-specific performance metrics.
+A data-driven tennis analytics project that predicts match outcomes using Elo ratings and an XGBoost model trained on [TennisMyLife](https://stats.tennismylife.org) data.
 
 ## 🏗️ Architecture
 
 ```
-Jeff Sackmann CSVs / Live API
+TennisMyLife (stats.tennismylife.org) — year CSVs + ongoing tourneys
             ↓
-      Python ETL + Analytics
+      Python pipelines (ingest → features → train)
             ↓
-   Precomputed JSON / CSV
+   outputs/ (model.pkl, feature_cols.json, player_stats_latest.csv)
             ↓
- Static Dashboard (GitHub Pages)
+ Dashboard (planned): select two players → win probability + stats
 ```
 
-- **Python**: Handles data ingestion, feature engineering, and Elo rating calculations
-- **GitHub Pages**: Hosts a static frontend that displays precomputed analytics
-- **GitHub Actions**: Automatically updates data weekly
+- **Data:** 2024–2026 year CSVs and ongoing tourneys
+- **Model:** XGBoost with point-in-time features (ELO, rolling win %, surface win %, last 3 win avg, aces, minutes, BP save %, rank diff)
+- **Pipeline:** Full recompute and retrain (ingest → features → train → save to `outputs/`)
+- **Scheduler:** GitHub Actions runs the pipeline daily at **8:00 JST** and commits updated model and stats to the repo
 
-## ✨ Features
+## 📁 Project structure
 
-- **Player Comparison**: Compare any two ATP players
-- **Win Probability**: Elo-based match prediction with confidence levels
-- **Head-to-Head**: Historical matchup statistics
-- **Surface Analysis**: Performance breakdown by surface (Hard, Clay, Grass)
-- **Recent Form**: Last 10 matches win percentage
-- **Elo Rankings**: Current Elo ratings and rankings
+```
+breakpoint-analytics/
+├── .github/workflows/
+│   └── update-model.yml  # Daily 8:00 JST: fetch data, retrain, commit outputs
+├── analytics/
+│   └── config.py         # Data URLs, years, output dirs, model params
+├── pipelines/
+│   ├── ingest.py         # Load historical matches
+│   ├── features.py       # Player history, ELO, rolling features
+│   └── train_model.py    # Match matrix, train XGBoost, save artifacts
+├── outputs/               # model.pkl, feature_cols.json, player_stats_latest.csv
+├── notebooks/             # Jupyter notebooks (e.g. 220226.ipynb)
+├── plan.md                # Pipeline and dashboard plan
+├── pyproject.toml
+└── README.md
+```
 
-## 🚀 Quick Start
+## 🚀 Quick start
 
 ### Prerequisites
 
 - Python 3.10+
-- [uv](https://github.com/astral-sh/uv) - Fast Python package installer
+- [uv](https://github.com/astral-sh/uv) (or pip) for dependencies
 
-### Installing uv
-
-```bash
-# Install uv (if not already installed)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Or with Homebrew (macOS)
-brew install uv
-
-# Or with pip
-pip install uv
-```
-
-### Installation
+### Install
 
 ```bash
-# Clone the repository
 git clone <your-repo-url>
 cd breakpoint-analytics
-
-# Install dependencies with uv
-make install
-# or
 uv sync
+# or: pip install -e .
 ```
 
-### Running the Pipeline
+### Run the pipeline
 
 ```bash
-# Run full pipeline (ingest -> build -> export)
-make all
-
-# Or run steps individually:
-make ingest    # Download data from Sackmann repo
-make build     # Build features and calculate Elo ratings
-make export    # Export JSON files for dashboard
+# From repo root
+python pipelines/train_model.py
+# or
+python -m pipelines.train_model
 ```
 
-**Note**: All Python scripts run via `uv run python` which automatically uses the project's virtual environment.
+Outputs are written to `outputs/`: trained model, feature column list, and latest player stats for dashboard lookups.
 
-### Viewing the Dashboard
+See **plan.md** for the full pipeline description and planned dashboard.
 
-```bash
-# Start local web server
-make run-dashboard
+## ⏰ Automated updates (GitHub Actions)
 
-# Open http://localhost:8000/dashboard/ in your browser
-```
+A workflow runs **every morning at 8:00 JST** (23:00 UTC):
 
-## 📁 Project Structure
+1. Fetches the latest match data from TennisMyLife (year CSVs + ongoing tourneys).
+2. Rebuilds player history, ELO, and rolling features.
+3. Retrains the XGBoost model and writes new artifacts to `outputs/`.
+4. Commits and pushes the updated `outputs/` (model, feature_cols, player_stats) to the repo.
 
-```
-breakpoint-analytics/
-├── data/
-│   ├── raw/              # Raw CSV files (gitignored)
-│   └── processed/        # Processed data files
-├── analytics/
-│   ├── elo.py            # Elo rating system
-│   ├── feature_engineering.py
-│   ├── win_probability.py
-│   ├── utils.py
-│   └── config.py
-├── pipelines/
-│   ├── ingest_sackmann.py
-│   ├── build_features.py
-│   └── export_dashboard_data.py
-├── dashboard/
-│   ├── index.html
-│   ├── styles.css
-│   └── app.js
-├── outputs/              # JSON files for frontend
-├── .github/workflows/
-│   └── update-data.yml   # Automated data updates
-├── pyproject.toml      # Project dependencies (uv)
-├── requirements.txt     # Legacy (for compatibility)
-├── Makefile
-└── README.md
-```
+- **Workflow file:** `.github/workflows/update-model.yml`
+- **Manual run:** In the repo, go to **Actions → Update model (daily) → Run workflow** to trigger a run on demand.
 
-## 📊 Data Sources
+## 📊 Data source
 
-- **Primary**: [Jeff Sackmann's Tennis Data](https://github.com/JeffSackmann/tennis_atp)
-  - Historical ATP match data
-  - Updated regularly
-  - Free and open source
-
-- **Future**: Live API integration for recent matches (Phase 3)
-
-## 🧮 Methodology
-
-### Elo Rating System
-
-- **Starting Rating**: 1500
-- **K-Factor**: 
-  - 48 for Grand Slams
-  - 32 for regular tournaments
-  - 24 for smaller tournaments
-- **Surface Adjustment**: Separate Elo ratings per surface with transfer learning
-- **Time Decay**: Exponential decay for older matches (365-day half-life)
-
-### Win Probability
-
-Calculated using Elo-based expected score formula:
-```
-P(Player A wins) = 1 / (1 + 10^((Elo_B - Elo_A) / 400))
-```
-
-### Feature Engineering
-
-- Career win percentage (minimum 5 matches)
-- Recent form (last 10 matches)
-- Surface-specific statistics (minimum 3 matches per surface)
-- Head-to-head records
-- Tournament-level performance
-
-## 🔄 Automated Updates
-
-GitHub Actions workflow runs weekly (Sunday 2 AM UTC) to:
-1. Download latest data from Sackmann repo
-2. Recalculate Elo ratings and features
-3. Export updated JSON files
-4. Commit and push changes
-5. GitHub Pages automatically refreshes
-
-## 🛠️ Development
-
-### Running Tests
-
-```bash
-# Add tests as needed
-pytest tests/
-```
-
-### Adding New Features
-
-1. Update analytics modules (`analytics/`)
-2. Modify export pipeline (`pipelines/export_dashboard_data.py`)
-3. Update frontend (`dashboard/`)
-4. Test locally with `make run-dashboard`
-
-## 📝 Limitations & Future Improvements
-
-### Current Limitations
-
-- Historical data only (no live match updates in MVP)
-- Simplified matchup stats (no detailed H2H in MVP)
-- Basic Elo implementation (no advanced ML models)
-- ATP only (no WTA data)
-
-### Planned Enhancements
-
-- [ ] Logistic regression model for win probability
-- [ ] Live API integration for recent matches
-- [ ] Detailed match history and score breakdowns
-- [ ] Elo trend charts over time
-- [ ] Tournament-specific predictions
-- [ ] WTA data support
-- [ ] Player search and autocomplete
-- [ ] Mobile-responsive improvements
+- [TennisMyLife](https://stats.tennismylife.org/data) — year CSVs (e.g. `2024.csv`, `2025.csv`, `2026.csv`) and `ongoing_tourneys.csv`
 
 ## 📄 License
 
-This project uses data from [Jeff Sackmann's Tennis Data](https://github.com/JeffSackmann/tennis_atp), which is licensed under CC BY-NC-SA 4.0.
-
-## 🙏 Acknowledgments
-
-- [Jeff Sackmann](https://github.com/JeffSackmann) for providing excellent tennis data
-- ATP for match data
-
-## 📧 Contact
-
-For questions or contributions, please open an issue on GitHub.
-
----
-
-Built with ❤️ for tennis analytics enthusiasts
+See repository for license and acknowledgments.

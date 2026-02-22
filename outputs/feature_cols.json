@@ -1,0 +1,12 @@
+[
+  "rank_diff",
+  "elo_diff",
+  "form_diff",
+  "last3_win_diff",
+  "surface_win_diff",
+  "ace_diff",
+  "minutes_diff",
+  "bp_diff",
+  "surface_Grass",
+  "surface_Hard"
+]
