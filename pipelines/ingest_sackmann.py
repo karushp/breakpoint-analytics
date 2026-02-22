@@ -51,6 +51,7 @@ def load_sackmann_data(years: List[int], data_dir: str = DATA_RAW_DIR) -> pd.Dat
         Combined DataFrame
     """
     all_data = []
+    failed_years = []
     
     for year in years:
         csv_path = os.path.join(data_dir, f"atp_matches_{year}.csv")
@@ -66,6 +67,16 @@ def load_sackmann_data(years: List[int], data_dir: str = DATA_RAW_DIR) -> pd.Dat
         if not df.empty:
             df['year'] = year
             all_data.append(df)
+        else:
+            failed_years.append(year)
+    
+    if failed_years:
+        print(f"\n⚠️  Warning: Could not load data for years: {failed_years}")
+        print("   These years may not be available yet in the repository.")
+        if all_data:
+            print(f"   Continuing with {len(all_data)} year(s) of available data.\n")
+        else:
+            print("   No data available! Please check the repository or your connection.\n")
     
     if not all_data:
         return pd.DataFrame()
@@ -128,9 +139,11 @@ def main():
     """Main ingestion function."""
     print("Starting data ingestion from Sackmann repository...")
     
-    # Get recent years (last 5 years for MVP)
+    # Get recent years: 2022-2025
+    # Note: 2025 data may not be available yet in the repository
+    # The code will continue with available years if some are missing
     current_year = datetime.now().year
-    years = list(range(current_year - 4, current_year + 1))
+    years = list(range(2022, min(current_year + 1, 2026)))  # 2022-2025, or up to current year
     
     # Load data
     df = load_sackmann_data(years, DATA_RAW_DIR)
