@@ -181,9 +181,27 @@ def predict(req: PredictRequest):
         "rolling_bp_save": _stat(sb, "rolling_bp_save"),
     }
 
+    def _last5(s):
+        out = []
+        for i in range(1, 6):
+            v = s.get(f"last5_{i}")
+            if pd.isna(v) or v == "":
+                out.append(None)
+            else:
+                try:
+                    out.append(int(v))
+                except (TypeError, ValueError):
+                    out.append(None)
+        return out
+
+    last5_a = _last5(sa)
+    last5_b = _last5(sb)
+
     return {
         "prob_a_wins": round(prob_a_wins, 4),
         "prob_b_wins": round(1 - prob_a_wins, 4),
         "stats_a": stats_a,
         "stats_b": stats_b,
+        "last5_a": last5_a,
+        "last5_b": last5_b,
     }

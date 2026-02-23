@@ -182,8 +182,17 @@
     });
   }
 
-  function renderScorecard(rows) {
+  function renderScorecard(rows, statsA, statsB) {
+    const hasStats =
+      statsA && statsB &&
+      (statsA.elo != null || statsB.elo != null || statsA.rolling_win_pct != null || statsB.rolling_win_pct != null);
     dom.scorecardTable.innerHTML = "";
+    if (!hasStats && rows.length > 0) {
+      const hint = document.createElement("p");
+      hint.className = "scorecard-hint";
+      hint.textContent = "Scorecard metrics will appear after the API is updated. Redeploy the backend on Render to get the latest /predict response.";
+      dom.scorecardTable.appendChild(hint);
+    }
     rows.forEach((row) => {
       const tr = document.createElement("div");
       tr.className = "scorecard-row";
@@ -212,7 +221,7 @@
 
     renderProbabilityBar(probA, probB);
     const scorecardRows = buildScorecardRows(statsA, statsB);
-    renderScorecard(scorecardRows);
+    renderScorecard(scorecardRows, statsA, statsB);
   }
 
   // ---------------------------------------------------------------------------

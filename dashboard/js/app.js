@@ -12,7 +12,6 @@
   const API_BASE = (window.BREAKPOINT_API_BASE || "").replace(/\/$/, "");
   const SUGGESTIONS_MAX = 50;
   const SUGGESTIONS_BLUR_MS = 150;
-  const LAST5_PLACEHOLDER = { player1: { wins: 4, losses: 1 }, player2: { wins: 3, losses: 2 } };
   const SCORECARD_DEFINITIONS = [
     { key: "elo", metric: "ELO", format: "elo", higherIsBetter: true },
     { key: "rolling_win_pct", metric: "Form (win % last 10)", format: "pct", higherIsBetter: true },
@@ -130,23 +129,27 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Comparison view: last 5 icons (placeholder until we have match history)
+  // Comparison view: last 5 match results (array of 1=win, 0=loss, null=no data; index 0 = most recent)
   // ---------------------------------------------------------------------------
-  function renderLast5Icons(container, wins, losses) {
+  function renderLast5Icons(container, resultsArray) {
     container.innerHTML = "";
     container.setAttribute("aria-hidden", "false");
-    for (let i = 0; i < wins; i++) {
+    const arr = Array.isArray(resultsArray) ? resultsArray.slice(0, 5) : [];
+    while (arr.length < 5) arr.push(null);
+    arr.forEach((result, i) => {
       const el = document.createElement("span");
-      el.className = "icon win";
-      el.setAttribute("aria-label", "Win");
+      if (result === 1) {
+        el.className = "icon win";
+        el.setAttribute("aria-label", "Win");
+      } else if (result === 0) {
+        el.className = "icon loss";
+        el.setAttribute("aria-label", "Loss");
+      } else {
+        el.className = "icon last5-unknown";
+        el.setAttribute("aria-label", "No data");
+      }
       container.appendChild(el);
-    }
-    for (let i = 0; i < losses; i++) {
-      const el = document.createElement("span");
-      el.className = "icon loss";
-      el.setAttribute("aria-label", "Loss");
-      container.appendChild(el);
-    }
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -182,8 +185,17 @@
     });
   }
 
-  function renderScorecard(rows) {
+  function renderScorecard(rows, statsA, statsB) {
+    const hasStats =
+      statsA && statsB &&
+      (statsA.elo != null || statsB.elo != null || statsA.rolling_win_pct != null || statsB.rolling_win_pct != null);
     dom.scorecardTable.innerHTML = "";
+    if (!hasStats && rows.length > 0) {
+      const hint = document.createElement("p");
+      hint.className = "scorecard-hint";
+      hint.textContent = "Scorecard metrics will appear after the API is updated. Redeploy the backend on Render to get the latest /predict response.";
+      dom.scorecardTable.appendChild(hint);
+    }
     rows.forEach((row) => {
       const tr = document.createElement("div");
       tr.className = "scorecard-row";
@@ -203,16 +215,16 @@
   }
 
   function renderComparisonView(playerA, playerB, data) {
-    const { prob_a_wins: probA, prob_b_wins: probB, stats_a: statsA, stats_b: statsB } = data;
+    const { prob_a_wins: probA, prob_b_wins: probB, stats_a: statsA, stats_b: statsB, last5_a: last5A, last5_b: last5B } = data;
 
     dom.last5Name1.textContent = playerA;
     dom.last5Name2.textContent = playerB;
-    renderLast5Icons(dom.last5Icons1, LAST5_PLACEHOLDER.player1.wins, LAST5_PLACEHOLDER.player1.losses);
-    renderLast5Icons(dom.last5Icons2, LAST5_PLACEHOLDER.player2.wins, LAST5_PLACEHOLDER.player2.losses);
+    renderLast5Icons(dom.last5Icons1, last5A);
+    renderLast5Icons(dom.last5Icons2, last5B);
 
     renderProbabilityBar(probA, probB);
     const scorecardRows = buildScorecardRows(statsA, statsB);
-    renderScorecard(scorecardRows);
+    renderScorecard(scorecardRows, statsA, statsB);
   }
 
   // ---------------------------------------------------------------------------

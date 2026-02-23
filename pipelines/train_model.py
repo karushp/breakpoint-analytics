@@ -185,6 +185,26 @@ def run(
         ]
     ]
     last["current_elo"] = last["player"].map(current_elo).fillna(ELO_INIT)
+
+    # Last 5 match results per player (1=win, 0=loss), most recent first: last5_1 .. last5_5
+    last5_rows = []
+    for player in player_hist["player"].unique():
+        group = (
+            player_hist[player_hist["player"] == player]
+            .sort_values("date", ascending=False)
+            .head(5)
+        )
+        wins = group["won"].tolist()
+        while len(wins) < 5:
+            wins.append(np.nan)
+        last5_rows.append({
+            "player": player,
+            "last5_1": wins[0], "last5_2": wins[1], "last5_3": wins[2],
+            "last5_4": wins[3], "last5_5": wins[4],
+        })
+    last5_df = pd.DataFrame(last5_rows)
+    last = last.merge(last5_df, on="player", how="left")
+
     last.to_csv(out_dir / PLAYER_STATS_FILENAME, index=False)
     print(f"Saved model, feature_cols, and player_stats_latest to {out_dir}")
 
