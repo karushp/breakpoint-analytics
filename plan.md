@@ -3,8 +3,8 @@
 ## Overview
 
 - **Model:** XGBoost classifier trained on historical match data with point-in-time features (ELO, rolling win %, surface win %, last 3 win avg, aces, minutes, BP save %, rank diff).
-- **Data:** New match data is added daily (year CSVs + ongoing tourneys). The model is re-run whenever new data is available.
-- **Dashboard (later):** User selects two players; app shows win probability and key stats (ELO, form, surface, etc.).
+- **Data:** New match data is added daily (year CSVs + ongoing tourneys from TennisMyLife). The model is re-run whenever new data is available.
+- **Dashboard (implemented):** User selects two players; app shows win probability and a scorecard of key stats (ELO, form, surface %, aces, minutes, BP save %). Front-end on GitHub Pages; prediction API on Render.
 
 ---
 
@@ -38,27 +38,29 @@
 6. **Train / val / test**
    - Time-based split (e.g. 60% / 20% / 20% by date).
    - Train XGBoost with early stopping on validation set.
-   - Save: fitted model, `feature_cols`, and (optional) latest player stats for dashboard.
+   - Save: fitted model, `feature_cols`, and latest player stats for the dashboard API.
 
 7. **Outputs**
-   - `outputs/model.pkl` (or equivalent): trained XGBoost model.
+   - `outputs/model.pkl`: trained XGBoost model.
    - `outputs/feature_cols.json`: list of feature names in order.
-   - `outputs/player_stats_latest.csv`: current ELO and rolling stats per player (for dashboard lookups).
+   - `outputs/player_stats_latest.csv`: current ELO and rolling stats per player (for dashboard API).
 
 ### Scheduling
 
-- Run once per day after new data is available (cron/scheduler).
+- GitHub Actions workflow runs daily at **8:00 JST** (see `.github/workflows/update-model.yml`): fetches data, runs full pipeline, commits updated `outputs/` to the repo.
 - No incremental training: full recompute of features and retrain so point-in-time logic stays correct.
 
 ---
 
-## 2. Dashboard (to build later)
+## 2. Dashboard (implemented)
 
-- **Input:** User selects Player A and Player B (and optionally surface).
-- **Lookup:** For both players, get current stats from latest run (ELO, last3_win_avg, rolling_win_pct, surface_win_pct, etc.).
-- **Feature row:** Build one row with same `feature_cols`: diffs (A − B) and surface dummies.
-- **Predict:** Load saved model, run `predict_proba` → P(A wins).
-- **Display:** Win probability for A and B; optional breakdown of stats (ELO, form, last 3, surface %, etc.).
+- **Front-end (GitHub Pages):** Static site in `dashboard/`; published from `docs/` (synced via workflow or manual copy). User selects Player 1 and Player 2 via type-ahead search, then clicks "Generate Comparison".
+- **Backend (Render):** FastAPI app in `api/` serves:
+  - `GET /health` – readiness
+  - `GET /players` – list of player names for autocomplete
+  - `POST /predict` – body `{ player_a, player_b, surface }` → `{ prob_a_wins, prob_b_wins, stats_a, stats_b }`
+- **Flow:** Dashboard calls `/players` on load; on "Generate Comparison" it calls `/predict` with the two selected players. API loads `outputs/` from the repo, builds the feature row (diffs A − B + surface dummies), runs `predict_proba`, and returns win probabilities plus per-player stats for the scorecard.
+- **Display:** Win probability bar (green = higher, red = lower), placeholder "Last 5 Matches" icons, and a scorecard of seven metrics from the data: ELO, Form (win % last 10), Win % (last 3), Surface win %, Aces (avg per match), Minutes (avg per match), Break points saved %.
 
 ---
 
@@ -66,12 +68,16 @@
 
 | Path | Purpose |
 |------|--------|
-| `analytics/config.py` | Data URLs, years, dirs (DATA_RAW_DIR, OUTPUTS_DIR, etc.). |
+| `analytics/config.py` | Data URLs, years, dirs, model params, output filenames. |
 | `pipelines/ingest.py` | Load year CSVs + optional ongoing → `historical_matches`. |
 | `pipelines/features.py` | Build `player_hist`, ELO, rolling features. |
 | `pipelines/train_model.py` | Build match matrix, split, train XGBoost, save model + feature_cols + player stats. |
-
-Dashboard code will be added later (separate app or under a `dashboard/` or `app/` area).
+| `api/main.py` | FastAPI app: /health, /players, /predict (reads `outputs/`). |
+| `api/requirements.txt` | API dependencies for Render. |
+| `dashboard/` | Front-end source: index.html, css/, js/ (theme, styles, app, config). |
+| `docs/` | GitHub Pages publish root (synced from `dashboard/`). |
+| `.github/workflows/update-model.yml` | Daily 8:00 JST: run pipeline, commit outputs. |
+| `.github/workflows/deploy-dashboard.yml` | On push to dashboard/: sync dashboard → docs. |
 
 ---
 
@@ -80,9 +86,8 @@ Dashboard code will be added later (separate app or under a `dashboard/` or `app
 From repo root:
 
 ```bash
-python pipelines/train_model.py
-# or
+uv sync
 python -m pipelines.train_model
 ```
 
-Outputs go to `outputs/` (create if missing). Use same outputs for the dashboard when it's built.
+Outputs go to `outputs/`. The Render API and GitHub Actions use these outputs; see **README.md** for deploy and schedule details.
