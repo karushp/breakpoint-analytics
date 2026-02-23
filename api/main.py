@@ -184,12 +184,13 @@ def predict(req: PredictRequest):
     def _last5(s):
         out = []
         for i in range(1, 6):
-            v = s.get(f"last5_{i}")
-            if pd.isna(v) or v == "":
+            v = s.get(f"last5_{i}", None)
+            if v is None or (isinstance(v, float) and pd.isna(v)) or v == "":
                 out.append(None)
             else:
                 try:
-                    out.append(int(v))
+                    # CSV may have 0.0/1.0 (float) or "0"/"1" (str)
+                    out.append(int(float(v)))
                 except (TypeError, ValueError):
                     out.append(None)
         return out

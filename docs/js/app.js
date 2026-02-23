@@ -136,12 +136,13 @@
     container.setAttribute("aria-hidden", "false");
     const arr = Array.isArray(resultsArray) ? resultsArray.slice(0, 5) : [];
     while (arr.length < 5) arr.push(null);
-    arr.forEach((result, i) => {
+    arr.forEach((result) => {
       const el = document.createElement("span");
-      if (result === 1) {
+      const v = result === null || result === undefined ? null : Number(result);
+      if (v === 1) {
         el.className = "icon win";
         el.setAttribute("aria-label", "Win");
-      } else if (result === 0) {
+      } else if (v === 0) {
         el.className = "icon loss";
         el.setAttribute("aria-label", "Loss");
       } else {
@@ -215,7 +216,10 @@
   }
 
   function renderComparisonView(playerA, playerB, data) {
-    const { prob_a_wins: probA, prob_b_wins: probB, stats_a: statsA, stats_b: statsB, last5_a: last5A, last5_b: last5B } = data;
+    const { prob_a_wins: probA, prob_b_wins: probB, stats_a: statsA, stats_b: statsB } = data;
+    // API returns last5_a, last5_b as arrays of 1/0/null (most recent first)
+    const last5A = Array.isArray(data.last5_a) ? data.last5_a : [];
+    const last5B = Array.isArray(data.last5_b) ? data.last5_b : [];
 
     dom.last5Name1.textContent = playerA;
     dom.last5Name2.textContent = playerB;
