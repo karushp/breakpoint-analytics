@@ -253,11 +253,21 @@ main {
   background-repeat: no-repeat;
 }
 
+.last5-icons .icon.last5-unknown {
+  background: var(--muted-foreground);
+  opacity: 0.5;
+}
+
 .last5-icons-row .last5-label {
   text-align: center;
   font-size: 0.875rem;
   color: var(--muted-foreground);
   margin: 0;
+}
+
+.last5-sublabel {
+  font-size: 0.8rem;
+  opacity: 0.9;
 }
 
 .comparison-bar {
