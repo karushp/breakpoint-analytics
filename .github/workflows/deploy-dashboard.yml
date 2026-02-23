@@ -22,7 +22,7 @@ jobs:
           rm -rf docs/css docs/js docs/index.html
           mkdir -p docs/css docs/js
           cp dashboard/index.html docs/
-          cp dashboard/css/style.css docs/css/
+          cp dashboard/css/theme.css dashboard/css/style.css docs/css/
           cp dashboard/js/config.js dashboard/js/app.js docs/js/
 
       - name: Commit and push docs
