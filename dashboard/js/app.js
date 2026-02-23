@@ -1,83 +1,298 @@
+/**
+ * Breakpoint Analytics – Dashboard
+ * Single-page app: player autocomplete, compare two players, show win probability and scorecard.
+ * Depends on: config.js (window.BREAKPOINT_API_BASE)
+ */
 (function () {
-  const API_BASE = window.BREAKPOINT_API_BASE.replace(/\/$/, "");
-  const playerA = document.getElementById("player-a");
-  const playerB = document.getElementById("player-b");
-  const surface = document.getElementById("surface");
-  const result = document.getElementById("result");
-  const message = document.getElementById("message");
-  const probBlock = document.getElementById("probabilities");
+  "use strict";
 
-  async function loadPlayers() {
-    try {
-      const res = await fetch(API_BASE + "/players");
-      if (!res.ok) throw new Error("Failed to load players");
-      const data = await res.json();
-      const options = data.players.map(function (p) {
-        const o = document.createElement("option");
-        o.value = p;
-        o.textContent = p;
-        return o;
-      });
-      playerA.append.apply(playerA, options);
-      playerB.append.apply(playerB, options);
-    } catch (e) {
-      message.textContent = "Could not load player list. Check API URL in js/config.js.";
-      console.error(e);
-    }
-  }
+  // ---------------------------------------------------------------------------
+  // Constants
+  // ---------------------------------------------------------------------------
+  const API_BASE = (window.BREAKPOINT_API_BASE || "").replace(/\/$/, "");
+  const SUGGESTIONS_MAX = 50;
+  const SUGGESTIONS_BLUR_MS = 150;
+  const LAST5_PLACEHOLDER = { player1: { wins: 4, losses: 1 }, player2: { wins: 3, losses: 2 } };
+  const SCORECARD_DEFINITIONS = [
+    { key: "elo", metric: "ELO", format: "elo", higherIsBetter: true },
+    { key: "rolling_win_pct", metric: "Form (win % last 10)", format: "pct", higherIsBetter: true },
+    { key: "last3_win_avg", metric: "Win % (last 3)", format: "pct", higherIsBetter: true },
+    { key: "surface_win_pct", metric: "Surface win %", format: "pct", higherIsBetter: true },
+    { key: "rolling_ace_avg", metric: "Aces (avg per match)", format: "one", higherIsBetter: true },
+    { key: "rolling_minutes_avg", metric: "Minutes (avg per match)", format: "one", higherIsBetter: true },
+    { key: "rolling_bp_save", metric: "Break points saved %", format: "pct", higherIsBetter: true },
+  ];
 
-  async function predict() {
-    const a = playerA.value;
-    const b = playerB.value;
-    if (!a || !b || a === b) {
-      message.textContent = "Select two different players.";
-      probBlock.hidden = true;
-      return;
-    }
-    message.textContent = "Loading…";
-    probBlock.hidden = true;
-    try {
-      const res = await fetch(API_BASE + "/predict", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          player_a: a,
-          player_b: b,
-          surface: surface.value,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        message.textContent = data.detail || "Request failed.";
-        return;
-      }
-      message.textContent = "";
-      probBlock.innerHTML =
-        "<p><strong>" +
-        escapeHtml(a) +
-        "</strong> " +
-        (data.prob_a_wins * 100).toFixed(1) +
-        "% — <strong>" +
-        escapeHtml(b) +
-        "</strong> " +
-        (data.prob_b_wins * 100).toFixed(1) +
-        "%</p>";
-      probBlock.hidden = false;
-    } catch (e) {
-      message.textContent = "Request failed. Is the API running and CORS set for this origin?";
-      console.error(e);
-    }
-  }
+  // ---------------------------------------------------------------------------
+  // DOM references (single place for maintainability)
+  // ---------------------------------------------------------------------------
+  const dom = {
+    player1Input: document.getElementById("player-1"),
+    player2Input: document.getElementById("player-2"),
+    suggestions1: document.getElementById("suggestions-1"),
+    suggestions2: document.getElementById("suggestions-2"),
+    generateBtn: document.getElementById("generate-btn"),
+    resultSection: document.getElementById("result"),
+    message: document.getElementById("message"),
+    comparisonView: document.getElementById("comparison-view"),
+    last5Name1: document.getElementById("last5-name-1"),
+    last5Name2: document.getElementById("last5-name-2"),
+    last5Icons1: document.getElementById("last5-icons-1"),
+    last5Icons2: document.getElementById("last5-icons-2"),
+    barLeft: document.getElementById("bar-left"),
+    barRight: document.getElementById("bar-right"),
+    barPct1: document.getElementById("bar-pct-1"),
+    barPct2: document.getElementById("bar-pct-2"),
+    scorecardTable: document.getElementById("scorecard-table"),
+  };
 
-  function escapeHtml(s) {
+  // ---------------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------------
+  let playersList = [];
+
+  // ---------------------------------------------------------------------------
+  // Utils
+  // ---------------------------------------------------------------------------
+  function escapeHtml(str) {
     const div = document.createElement("div");
-    div.textContent = s;
+    div.textContent = str;
     return div.innerHTML;
   }
 
-  playerA.addEventListener("change", predict);
-  playerB.addEventListener("change", predict);
-  surface.addEventListener("change", predict);
+  const formatters = {
+    elo: (v) => (v == null ? "—" : String(Math.round(v))),
+    pct: (v) => (v == null ? "—" : Math.round(v * 100) + "%"),
+    one: (v) => (v == null ? "—" : Number(v).toFixed(1)),
+  };
 
+  // ---------------------------------------------------------------------------
+  // Autocomplete
+  // ---------------------------------------------------------------------------
+  function filterPlayers(query) {
+    const lower = query.trim().toLowerCase();
+    if (!lower) return playersList.slice(0, SUGGESTIONS_MAX);
+    return playersList
+      .filter((p) => p.toLowerCase().includes(lower))
+      .slice(0, SUGGESTIONS_MAX);
+  }
+
+  function showSuggestions(input, listEl) {
+    const matches = filterPlayers(input.value.trim());
+    listEl.innerHTML = "";
+    listEl.setAttribute("aria-hidden", "false");
+    matches.forEach((name) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = name;
+      btn.role = "option";
+      btn.addEventListener("click", () => {
+        input.value = name;
+        listEl.innerHTML = "";
+        listEl.setAttribute("aria-hidden", "true");
+        input.focus();
+      });
+      listEl.appendChild(btn);
+    });
+    if (matches.length === 0) listEl.setAttribute("aria-hidden", "true");
+  }
+
+  function hideSuggestions(listEl) {
+    listEl.innerHTML = "";
+    listEl.setAttribute("aria-hidden", "true");
+  }
+
+  function setupPlayerSearch(input, listEl) {
+    input.addEventListener("input", () => showSuggestions(input, listEl));
+    input.addEventListener("focus", () => showSuggestions(input, listEl));
+    input.addEventListener("blur", () => {
+      setTimeout(() => hideSuggestions(listEl), SUGGESTIONS_BLUR_MS);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Comparison view: probability bar
+  // ---------------------------------------------------------------------------
+  function renderProbabilityBar(probA, probB) {
+    dom.barLeft.style.flex = `${probA} 1 0`;
+    dom.barRight.style.flex = `${probB} 1 0`;
+    dom.barPct1.textContent = Math.round(probA * 100) + "%";
+    dom.barPct2.textContent = Math.round(probB * 100) + "%";
+    dom.barLeft.classList.remove("prob-higher", "prob-lower");
+    dom.barRight.classList.remove("prob-higher", "prob-lower");
+    if (probA >= probB) {
+      dom.barLeft.classList.add("prob-higher");
+      dom.barRight.classList.add("prob-lower");
+    } else {
+      dom.barLeft.classList.add("prob-lower");
+      dom.barRight.classList.add("prob-higher");
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Comparison view: last 5 icons (placeholder until we have match history)
+  // ---------------------------------------------------------------------------
+  function renderLast5Icons(container, wins, losses) {
+    container.innerHTML = "";
+    container.setAttribute("aria-hidden", "false");
+    for (let i = 0; i < wins; i++) {
+      const el = document.createElement("span");
+      el.className = "icon win";
+      el.setAttribute("aria-label", "Win");
+      container.appendChild(el);
+    }
+    for (let i = 0; i < losses; i++) {
+      const el = document.createElement("span");
+      el.className = "icon loss";
+      el.setAttribute("aria-label", "Loss");
+      container.appendChild(el);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Comparison view: scorecard
+  // ---------------------------------------------------------------------------
+  function buildScorecardRows(statsA, statsB) {
+    const stats1 = statsA || {};
+    const stats2 = statsB || {};
+    return SCORECARD_DEFINITIONS.map((def) => {
+      const leftVal = stats1[def.key];
+      const rightVal = stats2[def.key];
+      const leftNum = leftVal != null ? Number(leftVal) : null;
+      const rightNum = rightVal != null ? Number(rightVal) : null;
+      const leftDisplay = formatters[def.format](leftVal);
+      const rightDisplay = formatters[def.format](rightVal);
+      const sum = (leftNum != null ? leftNum : 0) + (rightNum != null ? rightNum : 0);
+      const leftPct = sum === 0 ? 50 : ((leftNum != null ? leftNum : 0) / sum) * 100;
+      const rightPct = sum === 0 ? 50 : ((rightNum != null ? rightNum : 0) / sum) * 100;
+      const tied = leftNum === rightNum;
+      const leftBetter =
+        leftNum != null && rightNum != null && !tied && (def.higherIsBetter ? leftNum >= rightNum : leftNum <= rightNum);
+      const rightBetter =
+        leftNum != null && rightNum != null && !tied && (def.higherIsBetter ? rightNum >= leftNum : rightNum <= leftNum);
+      return {
+        metric: def.metric,
+        leftDisplay,
+        rightDisplay,
+        leftPct,
+        rightPct,
+        leftBetter,
+        rightBetter,
+      };
+    });
+  }
+
+  function renderScorecard(rows) {
+    dom.scorecardTable.innerHTML = "";
+    rows.forEach((row) => {
+      const tr = document.createElement("div");
+      tr.className = "scorecard-row";
+      tr.innerHTML = `
+        <div class="metric-name">${escapeHtml(row.metric)}</div>
+        <div class="scorecard-bar-row">
+          <span class="value-left">${escapeHtml(row.leftDisplay)}</span>
+          <div class="metric-bar">
+            <span class="segment ${row.leftBetter ? "better" : "neutral"}" style="flex: 0 0 ${row.leftPct}%"></span>
+            <span class="segment ${row.rightBetter ? "better" : "neutral"}" style="flex: 0 0 ${row.rightPct}%"></span>
+          </div>
+          <span class="value-right">${escapeHtml(row.rightDisplay)}</span>
+        </div>
+      `;
+      dom.scorecardTable.appendChild(tr);
+    });
+  }
+
+  function renderComparisonView(playerA, playerB, data) {
+    const { prob_a_wins: probA, prob_b_wins: probB, stats_a: statsA, stats_b: statsB } = data;
+
+    dom.last5Name1.textContent = playerA;
+    dom.last5Name2.textContent = playerB;
+    renderLast5Icons(dom.last5Icons1, LAST5_PLACEHOLDER.player1.wins, LAST5_PLACEHOLDER.player1.losses);
+    renderLast5Icons(dom.last5Icons2, LAST5_PLACEHOLDER.player2.wins, LAST5_PLACEHOLDER.player2.losses);
+
+    renderProbabilityBar(probA, probB);
+    const scorecardRows = buildScorecardRows(statsA, statsB);
+    renderScorecard(scorecardRows);
+  }
+
+  // ---------------------------------------------------------------------------
+  // UI helpers
+  // ---------------------------------------------------------------------------
+  function showMessage(text, showComparisonPanel = false) {
+    dom.message.textContent = text;
+    dom.resultSection.hidden = false;
+    dom.comparisonView.hidden = !showComparisonPanel;
+  }
+
+  function showComparison(data) {
+    dom.message.textContent = "";
+    dom.comparisonView.hidden = false;
+    renderComparisonView(
+      dom.player1Input.value.trim(),
+      dom.player2Input.value.trim(),
+      data
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // API
+  // ---------------------------------------------------------------------------
+  async function loadPlayers() {
+    try {
+      const res = await fetch(`${API_BASE}/players`);
+      if (!res.ok) throw new Error("Failed to load players");
+      const data = await res.json();
+      playersList = (data.players || []).slice().sort();
+      setupPlayerSearch(dom.player1Input, dom.suggestions1);
+      setupPlayerSearch(dom.player2Input, dom.suggestions2);
+    } catch (e) {
+      showMessage("Could not load player list. Check API URL in js/config.js.");
+      console.error("loadPlayers", e);
+    }
+  }
+
+  async function generateComparison() {
+    const a = dom.player1Input.value.trim();
+    const b = dom.player2Input.value.trim();
+
+    if (!a || !b) {
+      showMessage("Please select both players.");
+      return;
+    }
+    if (a === b) {
+      showMessage("Please select two different players.");
+      return;
+    }
+
+    dom.generateBtn.disabled = true;
+    showMessage("Loading…", false);
+    dom.resultSection.hidden = false;
+    dom.comparisonView.hidden = true;
+
+    try {
+      const res = await fetch(`${API_BASE}/predict`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player_a: a, player_b: b, surface: "Hard" }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showMessage(data.detail || "Request failed.");
+        return;
+      }
+      showComparison(data);
+    } catch (e) {
+      showMessage("Request failed. Is the API running and CORS set for this origin?");
+      console.error("generateComparison", e);
+    } finally {
+      dom.generateBtn.disabled = false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------------
+  dom.generateBtn.addEventListener("click", generateComparison);
   loadPlayers();
 })();

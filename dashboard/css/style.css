@@ -1,20 +1,38 @@
-:root {
-  --bg: #0f1419;
-  --surface: #1a2332;
-  --text: #e6edf3;
-  --muted: #8b949e;
-  --accent: #58a6ff;
-  --border: #30363d;
-}
+/*
+ * Breakpoint Analytics – Dashboard styles
+ * Uses variables from theme.css
+ * Sections: base, layout, card & picker, result & comparison, scorecard, footer
+ */
 
 * {
   box-sizing: border-box;
 }
 
+/* Skip link: visible on focus for keyboard users */
+.skip-link {
+  position: absolute;
+  top: -2.5rem;
+  left: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--card);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  z-index: 100;
+  transition: top 0.15s ease;
+}
+.skip-link:focus {
+  top: 0.5rem;
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* --- Base --- */
 body {
   font-family: system-ui, -apple-system, sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--background);
+  color: var(--foreground);
   margin: 0;
   min-height: 100vh;
   display: flex;
@@ -30,88 +48,336 @@ header {
 
 header h1 {
   font-size: 1.75rem;
-  margin: 0 0 0.25rem 0;
-}
-
-header p {
-  color: var(--muted);
+  font-weight: 700;
   margin: 0;
-  font-size: 0.95rem;
+  color: var(--foreground);
 }
 
+/* --- Layout --- */
 main {
   width: 100%;
-  max-width: 32rem;
+  max-width: 50rem;
 }
 
-.picker {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-bottom: 1rem;
-}
-
-.picker label,
-.surface label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.875rem;
-  color: var(--muted);
-}
-
-.picker select,
-.surface select {
-  padding: 0.5rem 0.75rem;
-  font-size: 1rem;
-  background: var(--surface);
+/* --- Card & picker --- */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text);
-  min-width: 10rem;
+  padding: 1.5rem;
 }
 
-.vs {
-  padding-bottom: 0.5rem;
-  color: var(--muted);
-  font-weight: 600;
-}
-
-.surface {
+.card .picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
   margin-bottom: 1.5rem;
 }
 
-.surface select {
-  min-width: 8rem;
+.card .picker-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
-.result {
-  padding: 1.25rem;
-  background: var(--surface);
+.card .picker-col label {
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-normal);
+  color: var(--foreground);
+  margin-bottom: 0.375rem;
+}
+
+.card .player-search {
+  position: relative;
+}
+
+.card .player-search input {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  font-size: 1rem;
+  background: var(--input-background);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  min-height: 4rem;
+  border-radius: var(--radius);
+  color: var(--foreground);
+}
+
+.card .player-search input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.card .player-search input:focus {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.card .player-search .suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 0.25rem;
+  max-height: 12rem;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.card .player-search .suggestions:empty,
+.card .player-search .suggestions[aria-hidden="true"] {
+  display: none;
+}
+
+.card .player-search .suggestions button {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9375rem;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.card .player-search .suggestions button:hover {
+  background: var(--input-background);
+}
+
+.btn-generate {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--foreground);
+  background: var(--button-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-generate:hover {
+  background: var(--button-bg-hover);
+}
+
+.btn-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --- Result & comparison --- */
+.result.card {
+  margin-top: 1.5rem;
+  max-width: 50rem;
 }
 
 .result #message {
   margin: 0;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 
-.result .probabilities {
+/* Last 5 Matches + comparison bar */
+.comparison-view {
+  margin-top: 0;
+}
+
+.comparison-bar-wrap {
+  margin-bottom: 1.5rem;
+}
+
+.last5-section {
+  margin-bottom: 1.5rem;
+}
+
+.last5-names {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--foreground);
+}
+
+.last5-names .last5-name:first-child {
+  text-align: left;
+}
+
+.last5-names .last5-name:last-child {
+  text-align: right;
+}
+
+.last5-icons-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.last5-icons-row .last5-icons:first-child {
+  justify-self: start;
+}
+
+.last5-icons-row .last5-icons:last-child {
+  justify-self: end;
+}
+
+.last5-icons {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.last5-icons .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.last5-icons .icon.win {
+  background: var(--win);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+  background-size: 70%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.last5-icons .icon.loss {
+  background: var(--loss);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'%3E%3C/line%3E%3Cline x1='6' y1='6' x2='18' y2='18'%3E%3C/line%3E%3C/svg%3E");
+  background-size: 55%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.last5-icons-row .last5-label {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
   margin: 0;
 }
 
-.result .probabilities p {
-  margin: 0;
-  font-size: 1.1rem;
+.comparison-bar {
+  display: flex;
+  height: 2rem;
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
+.comparison-bar-segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-medium);
+  color: white;
+  transition: flex-grow 0.3s ease;
+}
+
+.comparison-bar-segment.prob-higher {
+  background: var(--bar-player1);
+}
+
+.comparison-bar-segment.prob-lower {
+  background: var(--bar-player2);
+}
+
+.comparison-bar-left .bar-pct {
+  padding-left: 0.5rem;
+}
+
+.comparison-bar-right .bar-pct {
+  padding-right: 0.5rem;
+}
+
+/* Scorecard Comparison */
+.scorecard-section {
+  border-top: 1px solid var(--border);
+  padding-top: 1.25rem;
+}
+
+.scorecard-title {
+  font-size: 1.125rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--foreground);
+  margin: 0 0 1rem 0;
+}
+
+.scorecard-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.scorecard-row {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9375rem;
+}
+
+.scorecard-row:last-child {
+  border-bottom: none;
+}
+
+.scorecard-row .metric-name {
+  text-align: center;
+  color: var(--muted-foreground);
+  margin-bottom: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.scorecard-row .scorecard-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.scorecard-row .value-left,
+.scorecard-row .value-right {
+  min-width: 2.5rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--foreground);
+}
+
+.scorecard-row .value-left {
+  text-align: right;
+}
+
+.scorecard-row .value-right {
+  text-align: left;
+}
+
+.scorecard-row .metric-bar {
+  flex: 1;
+  display: flex;
+  height: 0.5rem;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--border);
+}
+
+.scorecard-row .metric-bar .segment {
+  height: 100%;
+  min-width: 2px;
+  transition: flex-grow 0.25s ease;
+}
+
+.scorecard-row .metric-bar .segment.better {
+  background: var(--scorecard-bar-better);
+}
+
+.scorecard-row .metric-bar .segment.neutral {
+  background: var(--scorecard-bar-neutral);
+}
+
+/* --- Footer --- */
 footer {
   margin-top: auto;
   padding-top: 2rem;
   font-size: 0.8rem;
-  color: var(--muted);
+  color: var(--muted-foreground);
   text-align: center;
 }
