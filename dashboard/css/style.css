@@ -1,0 +1,117 @@
+:root {
+  --bg: #0f1419;
+  --surface: #1a2332;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --border: #30363d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1rem;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+header h1 {
+  font-size: 1.75rem;
+  margin: 0 0 0.25rem 0;
+}
+
+header p {
+  color: var(--muted);
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+main {
+  width: 100%;
+  max-width: 32rem;
+}
+
+.picker {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.picker label,
+.surface label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.picker select,
+.surface select {
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  min-width: 10rem;
+}
+
+.vs {
+  padding-bottom: 0.5rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.surface {
+  margin-bottom: 1.5rem;
+}
+
+.surface select {
+  min-width: 8rem;
+}
+
+.result {
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 4rem;
+}
+
+.result #message {
+  margin: 0;
+  color: var(--muted);
+}
+
+.result .probabilities {
+  margin: 0;
+}
+
+.result .probabilities p {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+footer {
+  margin-top: auto;
+  padding-top: 2rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}

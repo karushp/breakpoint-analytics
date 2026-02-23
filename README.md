@@ -11,7 +11,9 @@ TennisMyLife (stats.tennismylife.org) — year CSVs + ongoing tourneys
             ↓
    outputs/ (model.pkl, feature_cols.json, player_stats_latest.csv)
             ↓
- Dashboard (planned): select two players → win probability + stats
+   API (Render): FastAPI /predict, /players, /health
+            ↓
+   Dashboard (GitHub Pages): select two players → win probability + stats
 ```
 
 - **Data:** 2024–2026 year CSVs and ongoing tourneys
@@ -24,16 +26,24 @@ TennisMyLife (stats.tennismylife.org) — year CSVs + ongoing tourneys
 ```
 breakpoint-analytics/
 ├── .github/workflows/
-│   └── update-model.yml  # Daily 8:00 JST: fetch data, retrain, commit outputs
+│   ├── update-model.yml     # Daily 8:00 JST: fetch data, retrain, commit outputs
+│   └── deploy-dashboard.yml # On push to dashboard/: sync dashboard/ → docs/
 ├── analytics/
-│   └── config.py         # Data URLs, years, output dirs, model params
+│   └── config.py            # Data URLs, years, output dirs, model params
+├── api/                     # Render: FastAPI backend
+│   ├── main.py              # /health, /players, /predict
+│   └── requirements.txt    # API deps (fastapi, uvicorn, pandas, xgboost, …)
+├── dashboard/               # Front-end source (GitHub Pages)
+│   ├── index.html
+│   ├── css/style.css
+│   └── js/config.js, app.js
+├── docs/                    # GitHub Pages publish root (served at /)
+│   └── (synced from dashboard/ by workflow or manual copy)
 ├── pipelines/
-│   ├── ingest.py         # Load historical matches
-│   ├── features.py       # Player history, ELO, rolling features
-│   └── train_model.py    # Match matrix, train XGBoost, save artifacts
-├── outputs/               # model.pkl, feature_cols.json, player_stats_latest.csv
-├── notebooks/             # Jupyter notebooks (e.g. 220226.ipynb)
-├── plan.md                # Pipeline and dashboard plan
+│   ├── ingest.py, features.py, train_model.py
+├── outputs/                 # model.pkl, feature_cols.json, player_stats_latest.csv
+├── notebooks/
+├── plan.md
 ├── pyproject.toml
 └── README.md
 ```
@@ -63,9 +73,41 @@ python pipelines/train_model.py
 python -m pipelines.train_model
 ```
 
-Outputs are written to `outputs/`: trained model, feature column list, and latest player stats for dashboard lookups.
+Outputs are written to `outputs/`: trained model, feature column list, and latest player stats for the dashboard API.
 
-See **plan.md** for the full pipeline description and planned dashboard.
+See **plan.md** for the full pipeline description.
+
+---
+
+## 🌐 Dashboard (Render + GitHub Pages)
+
+- **Backend (Render):** FastAPI serves `/health`, `/players`, `/predict`. It reads `outputs/` from the repo (Render deploys the full repo).
+- **Front-end (GitHub Pages):** Static site in `dashboard/`; published from the `docs/` folder (or run the deploy workflow so `docs/` stays in sync with `dashboard/`).
+
+### Run the API locally
+
+```bash
+cd api
+pip install -r requirements.txt
+uvicorn main:app --reload --host 0.0.0.0
+# API at http://127.0.0.1:8000; set dashboard/js/config.js to this URL for local dev
+```
+
+### Deploy backend to Render
+
+1. In [Render](https://render.com), create a **Web Service**.
+2. Connect this repo. Set **Root Directory** to empty (repo root) so `outputs/` and `api/` are available.
+3. **Build command:** `pip install -r api/requirements.txt`
+4. **Start command:** `uvicorn api.main:app --host 0.0.0.0 --port $PORT`
+5. (Optional) **Environment:** `ALLOWED_ORIGINS` = `https://YOUR_USER.github.io` to restrict CORS.
+6. After deploy, set `dashboard/js/config.js` and `docs/js/config.js` to your Render URL (e.g. `https://breakpoint-analytics.onrender.com`).
+
+### Enable GitHub Pages (front-end)
+
+1. Repo **Settings → Pages**. Source: **Deploy from a branch**.
+2. Branch: **main**, folder: **/docs**. Save.
+3. Site URL: `https://YOUR_USER.github.io/breakpoint-analytics/`.
+4. After the API is on Render, set the API URL in `docs/js/config.js` (and in `dashboard/js/config.js` for future syncs) and commit. Pushes that change `dashboard/` trigger the **Deploy dashboard** workflow to sync `docs/`.
 
 ## ⏰ Automated updates (GitHub Actions)
 
