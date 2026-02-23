@@ -152,4 +152,38 @@ def predict(req: PredictRequest):
     }
     X = pd.DataFrame([row])[_feature_cols]
     prob_a_wins = float(_model.predict_proba(X)[0, 1])
-    return {"prob_a_wins": round(prob_a_wins, 4), "prob_b_wins": round(1 - prob_a_wins, 4)}
+
+    def _stat(s, key):
+        v = s.get(key)
+        if pd.isna(v) or v == "":
+            return None
+        try:
+            return round(float(v), 4)
+        except (TypeError, ValueError):
+            return None
+
+    stats_a = {
+        "elo": _stat(sa, "current_elo") or _stat(sa, "elo_before"),
+        "rolling_win_pct": _stat(sa, "rolling_win_pct"),
+        "last3_win_avg": _stat(sa, "last3_win_avg"),
+        "surface_win_pct": _stat(sa, "surface_win_pct"),
+        "rolling_ace_avg": _stat(sa, "rolling_ace_avg"),
+        "rolling_minutes_avg": _stat(sa, "rolling_minutes_avg"),
+        "rolling_bp_save": _stat(sa, "rolling_bp_save"),
+    }
+    stats_b = {
+        "elo": _stat(sb, "current_elo") or _stat(sb, "elo_before"),
+        "rolling_win_pct": _stat(sb, "rolling_win_pct"),
+        "last3_win_avg": _stat(sb, "last3_win_avg"),
+        "surface_win_pct": _stat(sb, "surface_win_pct"),
+        "rolling_ace_avg": _stat(sb, "rolling_ace_avg"),
+        "rolling_minutes_avg": _stat(sb, "rolling_minutes_avg"),
+        "rolling_bp_save": _stat(sb, "rolling_bp_save"),
+    }
+
+    return {
+        "prob_a_wins": round(prob_a_wins, 4),
+        "prob_b_wins": round(1 - prob_a_wins, 4),
+        "stats_a": stats_a,
+        "stats_b": stats_b,
+    }
