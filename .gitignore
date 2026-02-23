@@ -17,6 +17,8 @@ uv.lock
 data/raw/*.csv
 data/processed/*.csv
 *.csv
+# Allow pipeline outputs for API (Render / GitHub Pages)
+!outputs/player_stats_latest.csv
 
 # Jupyter Notebooks
 .ipynb_checkpoints

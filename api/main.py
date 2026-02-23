@@ -35,34 +35,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Loaded at startup (or on first request if you prefer lazy load)
+# Lazy-loaded so Render can start even before outputs/ is in the repo
 _model = None
 _feature_cols = None
 _player_stats = None
+_load_error = None
 
 
 def _load_artifacts():
-    global _model, _feature_cols, _player_stats
+    global _model, _feature_cols, _player_stats, _load_error
     if _model is not None:
         return
+    if _load_error is not None:
+        raise _load_error
     if not MODEL_PATH.exists():
-        raise FileNotFoundError(f"Model not found: {MODEL_PATH}")
-    _model = joblib.load(MODEL_PATH)
-    with open(FEATURE_COLS_PATH) as f:
-        _feature_cols = json.load(f)
-    _player_stats = pd.read_csv(PLAYER_STATS_PATH)
-    # Latest row per player (by date)
-    _player_stats["date"] = pd.to_datetime(_player_stats["date"])
-    _player_stats = (
-        _player_stats.sort_values("date")
-        .groupby("player", as_index=False)
-        .last()
-    )
-
-
-@app.on_event("startup")
-def startup():
-    _load_artifacts()
+        _load_error = FileNotFoundError(
+            f"Model not found: {MODEL_PATH}. Run the pipeline and commit outputs/."
+        )
+        raise _load_error
+    try:
+        _model = joblib.load(MODEL_PATH)
+        with open(FEATURE_COLS_PATH) as f:
+            _feature_cols = json.load(f)
+        _player_stats = pd.read_csv(PLAYER_STATS_PATH)
+        _player_stats["date"] = pd.to_datetime(_player_stats["date"])
+        _player_stats = (
+            _player_stats.sort_values("date")
+            .groupby("player", as_index=False)
+            .last()
+        )
+    except Exception as e:
+        _load_error = e
+        raise
 
 
 @app.get("/health")
@@ -72,7 +76,13 @@ def health():
 
 @app.get("/players")
 def players():
-    _load_artifacts()
+    try:
+        _load_artifacts()
+    except FileNotFoundError as e:
+        raise HTTPException(
+            status_code=503,
+            detail="Model not ready. Run the pipeline and commit outputs/ to the repo, then redeploy.",
+        ) from e
     names = sorted(_player_stats["player"].astype(str).tolist())
     return {"players": names}
 
@@ -85,7 +95,13 @@ class PredictRequest(BaseModel):
 
 @app.post("/predict")
 def predict(req: PredictRequest):
-    _load_artifacts()
+    try:
+        _load_artifacts()
+    except FileNotFoundError as e:
+        raise HTTPException(
+            status_code=503,
+            detail="Model not ready. Run the pipeline and commit outputs/ to the repo, then redeploy.",
+        ) from e
     a = req.player_a.strip()
     b = req.player_b.strip()
     if a == b:
