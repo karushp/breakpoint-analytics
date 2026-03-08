@@ -94,15 +94,10 @@
     listEl.setAttribute("aria-hidden", "false");
     matches.forEach((player) => {
       const name = typeof player === "string" ? player : player.name;
-      const lastPlayed = typeof player === "object" && player && player.last_played ? player.last_played : null;
       const btn = document.createElement("button");
       btn.type = "button";
       btn.role = "option";
-      if (lastPlayed) {
-        btn.textContent = name + " · Last played: " + formatDisplayDate(lastPlayed);
-      } else {
-        btn.textContent = name;
-      }
+      btn.textContent = name;
       btn.addEventListener("click", () => {
         input.value = name;
         listEl.innerHTML = "";
@@ -241,8 +236,16 @@
     const lastPlayedA = data.last_played_a ? formatDisplayDate(data.last_played_a) : "";
     const lastPlayedB = data.last_played_b ? formatDisplayDate(data.last_played_b) : "";
 
-    dom.last5Name1.textContent = lastPlayedA ? playerA + " · Last played: " + lastPlayedA : playerA;
-    dom.last5Name2.textContent = lastPlayedB ? playerB + " · Last played: " + lastPlayedB : playerB;
+    if (lastPlayedA) {
+      dom.last5Name1.innerHTML = escapeHtml(playerA) + "<br><span class=\"last5-date\">Last played: " + escapeHtml(lastPlayedA) + "</span>";
+    } else {
+      dom.last5Name1.textContent = playerA;
+    }
+    if (lastPlayedB) {
+      dom.last5Name2.innerHTML = escapeHtml(playerB) + "<br><span class=\"last5-date\">Last played: " + escapeHtml(lastPlayedB) + "</span>";
+    } else {
+      dom.last5Name2.textContent = playerB;
+    }
     renderLast5Icons(dom.last5Icons1, last5A);
     renderLast5Icons(dom.last5Icons2, last5B);
 
