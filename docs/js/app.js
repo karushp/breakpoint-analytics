@@ -65,6 +65,18 @@
     one: (v) => (v == null ? "—" : Number(v).toFixed(1)),
   };
 
+  /** Format YYYY-MM-DD for display (e.g. "1 Mar 2025"). */
+  function formatDisplayDate(isoDate) {
+    if (!isoDate || typeof isoDate !== "string") return "";
+    const d = new Date(isoDate + "T12:00:00");
+    if (isNaN(d.getTime())) return isoDate;
+    const months = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec";
+    const day = d.getDate();
+    const month = months.split(" ")[d.getMonth()];
+    const year = d.getFullYear();
+    return day + " " + month + " " + year;
+  }
+
   // ---------------------------------------------------------------------------
   // Autocomplete
   // ---------------------------------------------------------------------------
@@ -72,7 +84,7 @@
     const lower = query.trim().toLowerCase();
     if (!lower) return playersList.slice(0, SUGGESTIONS_MAX);
     return playersList
-      .filter((p) => p.toLowerCase().includes(lower))
+      .filter((p) => (p.name || p).toLowerCase().includes(lower))
       .slice(0, SUGGESTIONS_MAX);
   }
 
@@ -80,11 +92,17 @@
     const matches = filterPlayers(input.value.trim());
     listEl.innerHTML = "";
     listEl.setAttribute("aria-hidden", "false");
-    matches.forEach((name) => {
+    matches.forEach((player) => {
+      const name = typeof player === "string" ? player : player.name;
+      const lastPlayed = typeof player === "object" && player && player.last_played ? player.last_played : null;
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.textContent = name;
       btn.role = "option";
+      if (lastPlayed) {
+        btn.textContent = name + " · Last played: " + formatDisplayDate(lastPlayed);
+      } else {
+        btn.textContent = name;
+      }
       btn.addEventListener("click", () => {
         input.value = name;
         listEl.innerHTML = "";
@@ -220,9 +238,11 @@
     // API returns last5_a, last5_b as arrays of 1/0/null (most recent first)
     const last5A = Array.isArray(data.last5_a) ? data.last5_a : [];
     const last5B = Array.isArray(data.last5_b) ? data.last5_b : [];
+    const lastPlayedA = data.last_played_a ? formatDisplayDate(data.last_played_a) : "";
+    const lastPlayedB = data.last_played_b ? formatDisplayDate(data.last_played_b) : "";
 
-    dom.last5Name1.textContent = playerA;
-    dom.last5Name2.textContent = playerB;
+    dom.last5Name1.textContent = lastPlayedA ? playerA + " · Last played: " + lastPlayedA : playerA;
+    dom.last5Name2.textContent = lastPlayedB ? playerB + " · Last played: " + lastPlayedB : playerB;
     renderLast5Icons(dom.last5Icons1, last5A);
     renderLast5Icons(dom.last5Icons2, last5B);
 
@@ -258,7 +278,11 @@
       const res = await fetch(`${API_BASE}/players`);
       if (!res.ok) throw new Error("Failed to load players");
       const data = await res.json();
-      playersList = (data.players || []).slice().sort();
+      const raw = data.players || [];
+      // Support both [{"name","last_played"}, ...] and legacy ["Name", ...]
+      playersList = raw.map((p) =>
+        typeof p === "string" ? { name: p, last_played: null } : { name: p.name || "", last_played: p.last_played || null }
+      ).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
       setupPlayerSearch(dom.player1Input, dom.suggestions1);
       setupPlayerSearch(dom.player2Input, dom.suggestions2);
     } catch (e) {

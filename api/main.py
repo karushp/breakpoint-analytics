@@ -74,6 +74,16 @@ def health():
     return {"status": "ok"}
 
 
+def _format_last_played(date_ser):
+    """Format date for JSON (YYYY-MM-DD); None if missing/invalid."""
+    if date_ser is None or (hasattr(date_ser, "item") and pd.isna(date_ser)):
+        return None
+    try:
+        return pd.Timestamp(date_ser).strftime("%Y-%m-%d")
+    except (TypeError, ValueError):
+        return None
+
+
 @app.get("/players")
 def players():
     try:
@@ -83,8 +93,14 @@ def players():
             status_code=503,
             detail="Model not ready. Run the pipeline and commit outputs/ to the repo, then redeploy.",
         ) from e
-    names = sorted(_player_stats["player"].astype(str).tolist())
-    return {"players": names}
+    out = []
+    for _, row in _player_stats.iterrows():
+        out.append({
+            "name": str(row["player"]),
+            "last_played": _format_last_played(row.get("date")),
+        })
+    out.sort(key=lambda x: x["name"])
+    return {"players": out}
 
 
 class PredictRequest(BaseModel):
@@ -197,6 +213,8 @@ def predict(req: PredictRequest):
 
     last5_a = _last5(sa)
     last5_b = _last5(sb)
+    last_played_a = _format_last_played(sa.get("date"))
+    last_played_b = _format_last_played(sb.get("date"))
 
     return {
         "prob_a_wins": round(prob_a_wins, 4),
@@ -205,4 +223,6 @@ def predict(req: PredictRequest):
         "stats_b": stats_b,
         "last5_a": last5_a,
         "last5_b": last5_b,
+        "last_played_a": last_played_a,
+        "last_played_b": last_played_b,
     }
