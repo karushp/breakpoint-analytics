@@ -77,12 +77,6 @@ def add_elo(
     return out
 
 
-def _surface_win_pct_rolling(g: pd.DataFrame) -> pd.Series:
-    return g.groupby("surface")["won"].transform(
-        lambda x: x.shift().rolling(ROLL_WINDOW, min_periods=1).mean()
-    )
-
-
 def add_rolling_features(player_hist: pd.DataFrame) -> pd.DataFrame:
     """
     Add rolling_win_pct, last3_win_avg, surface_win_pct, rolling_ace_avg,
@@ -98,10 +92,9 @@ def add_rolling_features(player_hist: pd.DataFrame) -> pd.DataFrame:
         out.groupby("player")["won"]
         .transform(lambda x: x.shift().rolling(LAST_N_WIN_AVG, min_periods=1).mean())
     )
-    out["surface_win_pct"] = (
-        out.groupby("player", group_keys=False)
-        .apply(_surface_win_pct_rolling)
-        .values
+    # Same as nested groupby(player).apply(groupby(surface)) but avoids pandas apply FutureWarning.
+    out["surface_win_pct"] = out.groupby(["player", "surface"], sort=False)["won"].transform(
+        lambda x: x.shift().rolling(ROLL_WINDOW, min_periods=1).mean()
     )
     out["rolling_ace_avg"] = (
         out.groupby("player")["ace"]

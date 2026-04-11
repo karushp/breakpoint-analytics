@@ -11,6 +11,19 @@ from analytics.config import (
     TENNISMYLIFE_CURRENT_TOURNEYS_URL,
 )
 
+# Yearly + ongoing CSVs sometimes ship these as strings or blanks; coerce for math/ops downstream.
+_NUMERIC_MATCH_COLS = (
+    "winner_rank",
+    "loser_rank",
+    "minutes",
+    "w_ace",
+    "l_ace",
+    "w_bpSaved",
+    "l_bpSaved",
+    "w_bpFaced",
+    "l_bpFaced",
+)
+
 
 def load_historical_matches(
     years: list[int] | None = None,
@@ -50,6 +63,9 @@ def load_historical_matches(
         return pd.DataFrame()
 
     out = pd.concat(frames, ignore_index=True)
+    for col in _NUMERIC_MATCH_COLS:
+        if col in out.columns:
+            out[col] = pd.to_numeric(out[col], errors="coerce")
     out["tourney_date"] = pd.to_datetime(
         out["tourney_date"].astype(str), format="%Y%m%d", errors="coerce"
     )
