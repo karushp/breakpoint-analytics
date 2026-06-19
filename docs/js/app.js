@@ -274,9 +274,38 @@
   }
 
   // ---------------------------------------------------------------------------
+  // API status banner
+  // ---------------------------------------------------------------------------
+  function setApiStatus(state) {
+    const el = document.getElementById("api-status");
+    if (!el) return;
+    if (state === "loading") {
+      el.hidden = false;
+      el.className = "api-status api-status--loading";
+      el.innerHTML = '<span class="api-status__spinner" aria-hidden="true"></span>API is waking up, please wait\u2026';
+      dom.player1Input.disabled = true;
+      dom.player2Input.disabled = true;
+      dom.generateBtn.disabled = true;
+    } else if (state === "ready") {
+      el.hidden = true;
+      dom.player1Input.disabled = false;
+      dom.player2Input.disabled = false;
+      dom.generateBtn.disabled = false;
+    } else if (state === "error") {
+      el.hidden = false;
+      el.className = "api-status api-status--error";
+      el.textContent = "\u26a0\ufe0f Could not reach the API. Try refreshing the page.";
+      dom.player1Input.disabled = true;
+      dom.player2Input.disabled = true;
+      dom.generateBtn.disabled = true;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // API
   // ---------------------------------------------------------------------------
   async function loadPlayers() {
+    setApiStatus("loading");
     try {
       const res = await fetch(`${API_BASE}/players`);
       if (!res.ok) throw new Error("Failed to load players");
@@ -288,8 +317,9 @@
       ).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
       setupPlayerSearch(dom.player1Input, dom.suggestions1);
       setupPlayerSearch(dom.player2Input, dom.suggestions2);
+      setApiStatus("ready");
     } catch (e) {
-      showMessage("Could not load player list. Check API URL in js/config.js.");
+      setApiStatus("error");
       console.error("loadPlayers", e);
     }
   }
